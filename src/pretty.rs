@@ -2,9 +2,7 @@ use std::fmt::{self, Display};
 
 use ast::*;
 
-pub struct PrettyPrinter {
-    pub indentation: u32
-}
+pub struct PrettyPrinter;
 
 impl PrettyPrinter {
     pub fn print_program(&mut self, f: &mut fmt::Formatter, p: &Program) -> fmt::Result {
@@ -103,9 +101,22 @@ impl PrettyPrinter {
             }
             Expression::MethodCall { ref target, ref method_name, ref params } => {
                 write!(f, "{}.{}(", target, method_name)?;
-                let last_param = params.len() - 1;
                 if params.len() > 1 {
-                    for expr in params {
+                    let last_param = params.len() - 1;
+                    for expr in &params[..last_param] {
+                        self.print_expression(f, expr)?;
+                        write!(f, ", ")?;
+                    }
+
+                    self.print_expression(f, &params[last_param])?;
+                }
+                write!(f, ")")?;
+            }
+            Expression::New { ref class_name, ref params } => {
+                write!(f, "new {}(", class_name)?;
+                if params.len() > 1 {
+                    let last_param = params.len() - 1;
+                    for expr in &params[..last_param] {
                         self.print_expression(f, expr)?;
                         write!(f, ", ")?;
                     }

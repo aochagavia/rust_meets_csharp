@@ -10,7 +10,7 @@ pub struct Program {
 
 impl fmt::Display for Program {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        PrettyPrinter { indentation: 0 }.print_program(f, self)
+        PrettyPrinter.print_program(f, self)
     }
 }
 
@@ -97,6 +97,8 @@ pub enum Expression {
     Literal(Literal),
     /// Method call (may be static)
     MethodCall { target: String, method_name: String, params: Vec<Expression> },
+    /// New (construct class and allocate it on the heap)
+    New { class_name: String, params: Vec<Expression> },
     /// Variables
     VarRead(String),
 }
