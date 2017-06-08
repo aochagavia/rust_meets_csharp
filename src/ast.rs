@@ -10,7 +10,7 @@ pub struct Program {
 
 impl fmt::Display for Program {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        PrettyPrinter.print_program(f, self)
+        PrettyPrinter::new().print_program(f, self)
     }
 }
 

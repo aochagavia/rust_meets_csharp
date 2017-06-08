@@ -14,7 +14,7 @@ fn parent_class() -> TopItem {
 fn child_class() -> TopItem {
     TopItem::ClassDecl {
         name: "Child".into(),
-        inherits_from: None,
+        inherits_from: Some("Parent".into()),
         items: vec![
             ClassItem::MethodDecl { name: "ChildMethod".into(), params: Vec::new(), body: Vec::new(), return_ty: Type::Void }.into(),
             ClassItem::FieldDecl { name: "ChildField".into(), ty: Type::Int, assignment: None }.into()

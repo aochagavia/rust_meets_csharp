@@ -3,7 +3,12 @@ use ast::*;
 fn console_class() -> TopItem {
     // Provide two methods
     fn create_method(name: &str) -> ClassItem {
-        ClassItem::MethodDecl { name: name.into(), params: vec![("arg".into(), Type::String)], body: Vec::new(), return_ty: Type::Void }
+        ClassItem::MethodDecl {
+            name: name.into(),
+            params: vec![("arg".into(), Type::String)],
+            body: Vec::new(),
+            return_ty: Type::Void
+        }
     }
 
     TopItem::ClassDecl {
