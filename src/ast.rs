@@ -88,9 +88,16 @@ pub struct FieldDecl {
 pub struct MethodDecl {
     pub label: Label,
     pub name: String,
-    pub params: Vec<(String, Type)>,
+    pub params: Vec<Param>,
     pub body: Vec<Statement>,
     pub return_ty: Type
+}
+
+#[derive(Debug)]
+pub struct Param {
+    pub label: Label,
+    pub name: String,
+    pub ty: Type
 }
 
 /// Statements
@@ -121,6 +128,7 @@ pub struct Return {
 
 #[derive(Debug)]
 pub struct VarDecl {
+    pub label: Label,
     pub var_name: String,
     pub ty: Type,
     pub expr: Option<Expression>
@@ -152,22 +160,25 @@ pub struct BinaryOp {
 
 #[derive(Debug)]
 pub struct FieldAccess {
+    pub label: Label,
     pub var_name: String,
     pub field_name: String,
 }
 
 #[derive(Debug)]
 pub struct MethodCall {
+    pub label: Label,
     /// Target can be a variable name, field name or class name
     pub target: String,
     pub method_name: String,
-    pub params: Vec<Expression>
+    pub args: Vec<Expression>
 }
 
 #[derive(Debug)]
 pub struct New {
+    pub label: Label,
     pub class_name: String,
-    pub params: Vec<Expression>
+    pub args: Vec<Expression>
 }
 
 /// Literals

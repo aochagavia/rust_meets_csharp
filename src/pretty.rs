@@ -33,18 +33,18 @@ impl PrettyPrinter {
         Ok(())
     }
 
-    fn param_list<T, F>(f: &mut fmt::Formatter, params: &[T], format: F) -> fmt::Result
+    fn comma_separated<T, F>(f: &mut fmt::Formatter, items: &[T], format: F) -> fmt::Result
     where
         F: Fn(&mut fmt::Formatter, &T) -> fmt::Result
     {
-        if params.len() > 0 {
-            let last = params.len() - 1;
-            for x in &params[..last] {
+        if items.len() > 0 {
+            let last = items.len() - 1;
+            for x in &items[..last] {
                 format(f, x)?;
                 write!(f, ", ")?;
             }
 
-            let x = &params[last];
+            let x = &items[last];
             format(f, x)
         } else {
             Ok(())
@@ -84,9 +84,8 @@ impl PrettyPrinter {
                 ClassItem::MethodDecl(ref md) => {
                     self.indent(f)?;
                     write!(f, "{} {}(", md.return_ty, md.name)?;
-                    PrettyPrinter::param_list(f, &md.params, |f, p| {
-                        let &(ref param, ref ty) = p;
-                        write!(f, "{} {}", ty, param)
+                    PrettyPrinter::comma_separated(f, &md.params, |f, param| {
+                        write!(f, "{} {}", param.ty, param.name)
                     })?;
                     write!(f, ") ")?;
                     self.bracket_open(f)?;
@@ -145,12 +144,12 @@ impl PrettyPrinter {
             }
             Expression::MethodCall(ref call) => {
                 write!(f, "{}.{}(", call.target, call.method_name)?;
-                PrettyPrinter::param_list(f, &call.params, |f, expr| self.print_expression(f, expr) )?;
+                PrettyPrinter::comma_separated(f, &call.args, |f, expr| self.print_expression(f, expr) )?;
                 write!(f, ")")?;
             }
             Expression::New(ref new) => {
                 write!(f, "new {}(", new.class_name)?;
-                PrettyPrinter::param_list(f, &new.params, |f, expr| self.print_expression(f, expr) )?;
+                PrettyPrinter::comma_separated(f, &new.args, |f, expr| self.print_expression(f, expr) )?;
                 write!(f, ")")?;
             }
             Expression::VarRead(ref s) => {

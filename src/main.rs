@@ -11,8 +11,9 @@ fn main() {
     println!("=== Hello world:");
     println!("{}", hw);
     let nm = NodeMap::build(&hw);
-    let l = find_label_for_elem(&hw, "Console").expect("Label not found");
-    println!("Method list for Console: {:?}", get_method_list(&hw, &nm, l).unwrap());
+    println!("Nodemap: {:?}", nm);
+    //let l = find_label_for_elem(&hw, "Console").expect("Label not found");
+    //println!("Method list for Console: {:?}", get_method_list(&hw, &nm, l).unwrap());
 }
 
 fn find_label_for_elem(program: &ast::Program, name: &str) -> Option<ast::Label> {

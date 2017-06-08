@@ -6,7 +6,7 @@ fn console_class() -> TopItem {
         ClassItem::MethodDecl(MethodDecl {
             label: fresh_label(),
             name: name.to_string(),
-            params: vec![("arg".to_string(), Type::String)],
+            params: vec![Param { label: fresh_label(), name: "arg".to_string(), ty: Type::String }],
             body: Vec::new(),
             return_ty: Type::Void
         })
@@ -28,13 +28,13 @@ fn program_class() -> TopItem {
     let main_method = ClassItem::MethodDecl(MethodDecl {
         label: fresh_label(),
         name: "Main".to_string(),
-        params: vec![("args".to_string(),
-        Type::Array(Box::new(Type::String)))],
+        params: vec![Param { label: fresh_label(), name: "args".to_string(), ty: Type::Array(Box::new(Type::String)) }],
         body: vec![
             Statement::Expression(Expression::MethodCall(MethodCall {
+                label: fresh_label(),
                 target: "Console".to_string(),
                 method_name: "WriteLine".to_string(),
-                params: vec![Expression::Literal(Literal::String("Hello world!".to_string()))]
+                args: vec![Expression::Literal(Literal::String("Hello world!".to_string()))]
             }))
         ],
         return_ty: Type::Void
