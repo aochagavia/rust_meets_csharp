@@ -8,6 +8,7 @@ fn console_class() -> TopItem {
             name: name.to_string(),
             params: vec![Param { label: fresh_label(), name: "arg".to_string(), ty: Type::String }],
             body: Vec::new(),
+            is_static: true,
             return_ty: Type::Void
         })
     }
@@ -37,6 +38,7 @@ fn program_class() -> TopItem {
                 args: vec![Expression::Literal(Literal::String("Hello world!".to_string()))]
             }))
         ],
+        is_static: true,
         return_ty: Type::Void
     });
 

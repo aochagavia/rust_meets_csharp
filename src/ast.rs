@@ -90,6 +90,7 @@ pub struct MethodDecl {
     pub name: String,
     pub params: Vec<Param>,
     pub body: Vec<Statement>,
+    pub is_static: bool,
     pub return_ty: Type
 }
 

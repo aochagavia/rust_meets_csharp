@@ -72,9 +72,11 @@ impl PrettyPrinter {
         self.bracket_open(f)?;
 
         for item in &cd.items {
+            self.indent(f)?;
+            // Note: all fields and methods are public in our implementation
+            write!(f, "public ")?;
             match *item {
                 ClassItem::FieldDecl(ref fd) => {
-                    self.indent(f)?;
                     write!(f, "{} {}", fd.ty, fd.name)?;
                     if let Some(ref assignment) = fd.assignment {
                         self.print_expression(f, assignment)?;
@@ -82,7 +84,10 @@ impl PrettyPrinter {
                     writeln!(f, ";")?;
                 }
                 ClassItem::MethodDecl(ref md) => {
-                    self.indent(f)?;
+                    if md.is_static {
+                        write!(f, "static ")?;
+                    }
+
                     write!(f, "{} {}(", md.return_ty, md.name)?;
                     PrettyPrinter::comma_separated(f, &md.params, |f, param| {
                         write!(f, "{} {}", param.ty, param.name)
