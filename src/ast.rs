@@ -3,16 +3,7 @@ use std::fmt;
 
 use pretty::PrettyPrinter;
 
-#[derive(Debug)]
-pub struct Program {
-    pub items: Vec<Node<TopItem>>
-}
-
-impl fmt::Display for Program {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        PrettyPrinter::new().print_program(f, self)
-    }
-}
+pub type Label = u32;
 
 #[derive(Debug)]
 pub enum Type {
@@ -35,25 +26,29 @@ impl fmt::Display for Type {
     }
 }
 
-#[derive(Debug)]
-pub struct Node<T> {
-    pub label: u32,
-    pub content: T
+pub fn fresh_label() -> Label {
+    thread_local! {
+        static NEXT_LABEL: Cell<u32> = Cell::new(0);
+    }
+
+    let label = NEXT_LABEL.with(|l| {
+        let current = l.get();
+        l.set(current + 1);
+        current
+    });
+
+    label
 }
 
-impl<T> From<T> for Node<T> {
-    fn from(content: T) -> Node<T> {
-        thread_local! {
-            static NEXT_LABEL: Cell<u32> = Cell::new(0);
-        }
+// A program
+#[derive(Debug)]
+pub struct Program {
+    pub items: Vec<TopItem>
+}
 
-        let label = NEXT_LABEL.with(|l| {
-            let current = l.get();
-            l.set(current + 1);
-            current
-        });
-
-        Node { label, content }
+impl fmt::Display for Program {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        PrettyPrinter::new().print_program(f, self)
     }
 }
 
@@ -61,46 +56,118 @@ impl<T> From<T> for Node<T> {
 #[derive(Debug)]
 pub enum TopItem {
     /// Class declaration
-    ClassDecl { name: String, inherits_from: Option<String>, items: Vec<Node<ClassItem>> },
+    ClassDecl(ClassDecl),
+}
+
+#[derive(Debug)]
+pub struct ClassDecl {
+    pub label: Label,
+    pub name: String,
+    pub superclass: Option<String>,
+    pub items: Vec<ClassItem>
 }
 
 /// Class items
 #[derive(Debug)]
 pub enum ClassItem {
     /// Field declaration
-    FieldDecl { name: String, ty: Type, assignment: Option<Expression> },
+    FieldDecl(FieldDecl),
     /// Method declaration
-    MethodDecl { name: String, params: Vec<(String, Type)>, body: Vec<Node<Statement>>, return_ty: Type }
+    MethodDecl(MethodDecl)
+}
+
+#[derive(Debug)]
+pub struct FieldDecl {
+    pub label: Label,
+    pub name: String,
+    pub ty: Type,
+    pub assignment: Option<Expression>
+}
+
+#[derive(Debug)]
+pub struct MethodDecl {
+    pub label: Label,
+    pub name: String,
+    pub params: Vec<(String, Type)>,
+    pub body: Vec<Statement>,
+    pub return_ty: Type
 }
 
 /// Statements
 #[derive(Debug)]
 pub enum Statement {
     /// Assignment
-    Assign { var_name: String, expr: Expression },
+    Assign(Assign),
     /// Expression
     Expression(Expression),
     /// Return
-    Return(Option<Expression>),
+    Return(Return),
     /// Variable declaration
-    VarDecl { var_name: String, ty: Type, expr: Option<Expression> },
+    VarDecl(VarDecl),
+}
+
+#[derive(Debug)]
+pub struct Assign {
+    pub label: Label,
+    pub var_name: String,
+    pub expr: Expression
+}
+
+#[derive(Debug)]
+pub struct Return {
+    pub label: Label,
+    pub expr: Option<Expression>
+}
+
+#[derive(Debug)]
+pub struct VarDecl {
+    pub var_name: String,
+    pub ty: Type,
+    pub expr: Option<Expression>
 }
 
 /// Expressions
 #[derive(Debug)]
 pub enum Expression {
     /// Binary operators
-    BinaryOp { operator: BinaryOperator, left: Box<Expression>, right: Box<Expression> },
+    BinaryOp(BinaryOp),
     /// Field access
-    FieldAccess { variable: String, field_name: String },
+    FieldAccess(FieldAccess),
     /// Literals
     Literal(Literal),
     /// Method call (may be static)
-    MethodCall { target: String, method_name: String, params: Vec<Expression> },
+    MethodCall(MethodCall),
     /// New (construct class and allocate it on the heap)
-    New { class_name: String, params: Vec<Expression> },
+    New(New),
     /// Variables
     VarRead(String),
+}
+
+#[derive(Debug)]
+pub struct BinaryOp {
+    pub operator: BinaryOperator,
+    pub left: Box<Expression>,
+    pub right: Box<Expression>,
+}
+
+#[derive(Debug)]
+pub struct FieldAccess {
+    pub var_name: String,
+    pub field_name: String,
+}
+
+#[derive(Debug)]
+pub struct MethodCall {
+    /// Target can be a variable name, field name or class name
+    pub target: String,
+    pub method_name: String,
+    pub params: Vec<Expression>
+}
+
+#[derive(Debug)]
+pub struct New {
+    pub class_name: String,
+    pub params: Vec<Expression>
 }
 
 /// Literals
@@ -117,7 +184,7 @@ impl fmt::Display for Literal {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Literal::Int(x) => x.fmt(f),
-            Literal::String(ref s) => s.fmt(f),
+            Literal::String(ref s) => write!(f, "\"{}\"", s),
             Literal::Array(_) => unimplemented!()
         }
     }

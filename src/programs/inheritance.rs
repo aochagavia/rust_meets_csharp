@@ -1,29 +1,29 @@
 use ast::*;
 
 fn parent_class() -> TopItem {
-    TopItem::ClassDecl {
+    TopItem::ClassDecl(ClassDecl {
         name: "Parent".into(),
-        inherits_from: None,
+        superclass: None,
         items: vec![
-            ClassItem::MethodDecl { name: "ParentMethod".into(), params: Vec::new(), body: Vec::new(), return_ty: Type::Void }.into(),
-            ClassItem::FieldDecl { name: "ParentField".into(), ty: Type::Int, assignment: None }.into()
+            ClassItem::MethodDecl(MethodDecl { name: "ParentMethod".into(), params: Vec::new(), body: Vec::new(), return_ty: Type::Void }).into(),
+            ClassItem::FieldDecl(FieldDecl { name: "ParentField".into(), ty: Type::Int, assignment: None }).into()
         ]
-    }
+    })
 }
 
 fn child_class() -> TopItem {
-    TopItem::ClassDecl {
+    TopItem::ClassDecl(ClassDecl {
         name: "Child".into(),
-        inherits_from: Some("Parent".into()),
+        superclass: Some("Parent".into()),
         items: vec![
-            ClassItem::MethodDecl { name: "ChildMethod".into(), params: Vec::new(), body: Vec::new(), return_ty: Type::Void }.into(),
-            ClassItem::FieldDecl { name: "ChildField".into(), ty: Type::Int, assignment: None }.into()
+            ClassItem::MethodDecl(MethodDecl { name: "ChildMethod".into(), params: Vec::new(), body: Vec::new(), return_ty: Type::Void }).into(),
+            ClassItem::FieldDecl(FieldDecl { name: "ChildField".into(), ty: Type::Int, assignment: None }).into()
         ]
-    }
+    })
 }
 
 fn program_class() -> TopItem {
-    let main_method = ClassItem::MethodDecl {
+    let main_method = ClassItem::MethodDecl(MethodDecl {
         name: "Main".into(),
         params: vec![("args".into(),
         Type::Array(Box::new(Type::String)))],
@@ -35,13 +35,13 @@ fn program_class() -> TopItem {
             }.into()
         ],
         return_ty: Type::Void
-    };
+    });
 
-    TopItem::ClassDecl {
+    TopItem::ClassDecl(ClassDecl {
         name: "Program".into(),
-        inherits_from: None,
+        superclass: None,
         items: vec![main_method.into()]
-    }
+    })
 }
 
 pub fn inheritance() -> Program {

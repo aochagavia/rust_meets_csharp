@@ -54,7 +54,7 @@ impl PrettyPrinter {
     // AST-related
     pub fn print_program(&mut self, f: &mut fmt::Formatter, p: &Program) -> fmt::Result {
         for item in &p.items {
-            self.print_top_item(f, &item.content)?;
+            self.print_top_item(f, item)?;
             writeln!(f)?;
         }
 
@@ -62,37 +62,37 @@ impl PrettyPrinter {
     }
 
     pub fn print_top_item(&mut self, f: &mut fmt::Formatter, i: &TopItem) -> fmt::Result {
-        let &TopItem::ClassDecl { ref name, ref inherits_from, ref items } = i;
-        write!(f, "class {}", name)?;
+        let &TopItem::ClassDecl(ref cd) = i;
+        write!(f, "class {}", cd.name)?;
 
-        if let &Some(ref superclass) = inherits_from {
+        if let Some(ref superclass) = cd.superclass {
             write!(f, " : {} ", superclass)?;
         }
 
         self.bracket_open(f)?;
 
-        for item in items {
-            match item.content {
-                ClassItem::FieldDecl { ref name, ref ty, ref assignment } => {
+        for item in &cd.items {
+            match *item {
+                ClassItem::FieldDecl(ref fd) => {
                     self.indent(f)?;
-                    write!(f, "{} {}", ty, name)?;
-                    if let &Some(ref assignment) = assignment {
+                    write!(f, "{} {}", fd.ty, fd.name)?;
+                    if let Some(ref assignment) = fd.assignment {
                         self.print_expression(f, assignment)?;
                     }
                     writeln!(f, ";")?;
                 }
-                ClassItem::MethodDecl { ref name, ref params, ref body, ref return_ty } => {
+                ClassItem::MethodDecl(ref md) => {
                     self.indent(f)?;
-                    write!(f, "{} {}(", return_ty, name)?;
-                    PrettyPrinter::param_list(f, params, |f, p| {
+                    write!(f, "{} {}(", md.return_ty, md.name)?;
+                    PrettyPrinter::param_list(f, &md.params, |f, p| {
                         let &(ref param, ref ty) = p;
                         write!(f, "{} {}", ty, param)
                     })?;
                     write!(f, ") ")?;
                     self.bracket_open(f)?;
 
-                    for statement in body {
-                        self.print_statement(f, &statement.content)?;
+                    for statement in &md.body {
+                        self.print_statement(f, &statement)?;
                     }
 
                     self.bracket_close(f)?;
@@ -106,21 +106,21 @@ impl PrettyPrinter {
     pub fn print_statement(&mut self, f: &mut fmt::Formatter, s: &Statement) -> fmt::Result {
         self.indent(f)?;
         match *s {
-            Statement::Assign { ref var_name, ref expr } => {
-                write!(f, "{} = ", var_name)?;
-                self.print_expression(f, expr)?;
+            Statement::Assign(ref assign) => {
+                write!(f, "{} = ", assign.var_name)?;
+                self.print_expression(f, &assign.expr)?;
             }
             Statement::Expression(ref expr) => self.print_expression(f, expr)?,
-            Statement::Return(ref expr) => {
+            Statement::Return(ref ret) => {
                 write!(f, "return")?;
-                if let &Some(ref expr) = expr {
+                if let Some(ref expr) = ret.expr {
                     write!(f, " ")?;
                     self.print_expression(f, expr)?;
                 }
             }
-            Statement::VarDecl { ref var_name, ref ty, ref expr } => {
-                write!(f, "{} {}", ty, var_name)?;
-                if let &Some(ref expr) = expr {
+            Statement::VarDecl(ref decl) => {
+                write!(f, "{} {}", decl.ty, decl.var_name)?;
+                if let Some(ref expr) = decl.expr {
                     write!(f, " = ")?;
                     self.print_expression(f, expr)?;
                 }
@@ -132,25 +132,25 @@ impl PrettyPrinter {
 
     pub fn print_expression(&self, f: &mut fmt::Formatter, e: &Expression) -> fmt::Result {
         match *e {
-            Expression::BinaryOp { ref operator, ref left, ref right } => {
-                self.print_expression(f, &left)?;
-                write!(f, " {} ", operator)?;
-                self.print_expression(f, &right)?;
+            Expression::BinaryOp(ref op) => {
+                self.print_expression(f, &op.left)?;
+                write!(f, " {} ", op.operator)?;
+                self.print_expression(f, &op.right)?;
             }
-            Expression::FieldAccess { ref variable, ref field_name } => {
-                write!(f, "{}.{}", variable, field_name)?;
+            Expression::FieldAccess(ref access) => {
+                write!(f, "{}.{}", access.var_name, access.field_name)?;
             }
             Expression::Literal(ref l) => {
                 l.fmt(f)?;
             }
-            Expression::MethodCall { ref target, ref method_name, ref params } => {
-                write!(f, "{}.{}(", target, method_name)?;
-                PrettyPrinter::param_list(f, params, |f, expr| self.print_expression(f, expr) )?;
+            Expression::MethodCall(ref call) => {
+                write!(f, "{}.{}(", call.target, call.method_name)?;
+                PrettyPrinter::param_list(f, &call.params, |f, expr| self.print_expression(f, expr) )?;
                 write!(f, ")")?;
             }
-            Expression::New { ref class_name, ref params } => {
-                write!(f, "new {}(", class_name)?;
-                PrettyPrinter::param_list(f, params, |f, expr| self.print_expression(f, expr) )?;
+            Expression::New(ref new) => {
+                write!(f, "new {}(", new.class_name)?;
+                PrettyPrinter::param_list(f, &new.params, |f, expr| self.print_expression(f, expr) )?;
                 write!(f, ")")?;
             }
             Expression::VarRead(ref s) => {

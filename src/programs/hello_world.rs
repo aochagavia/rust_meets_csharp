@@ -3,52 +3,56 @@ use ast::*;
 fn console_class() -> TopItem {
     // Provide two methods
     fn create_method(name: &str) -> ClassItem {
-        ClassItem::MethodDecl {
-            name: name.into(),
-            params: vec![("arg".into(), Type::String)],
+        ClassItem::MethodDecl(MethodDecl {
+            label: fresh_label(),
+            name: name.to_string(),
+            params: vec![("arg".to_string(), Type::String)],
             body: Vec::new(),
             return_ty: Type::Void
-        }
+        })
     }
 
-    TopItem::ClassDecl {
-        name: "Console".into(),
-        inherits_from: None,
+    TopItem::ClassDecl(ClassDecl {
+        label: fresh_label(),
+        name: "Console".to_string(),
+        superclass: None,
         items: vec![
-            create_method("Write").into(),
-            create_method("WriteLine").into(),
-            ClassItem::FieldDecl { name: "MyField".into(), ty: Type::Int, assignment: None }.into()
+            create_method("Write"),
+            create_method("WriteLine"),
+            ClassItem::FieldDecl(FieldDecl { label: fresh_label(), name: "MyField".to_string(), ty: Type::Int, assignment: None })
         ]
-    }
+    })
 }
 
 fn program_class() -> TopItem {
-    let main_method = ClassItem::MethodDecl {
-        name: "Main".into(),
-        params: vec![("args".into(),
+    let main_method = ClassItem::MethodDecl(MethodDecl {
+        label: fresh_label(),
+        name: "Main".to_string(),
+        params: vec![("args".to_string(),
         Type::Array(Box::new(Type::String)))],
         body: vec![
-            Statement::Expression(Expression::MethodCall {
-                target: "Console".into(),
-                method_name: "WriteLine".into(),
-                params: vec![Expression::Literal(Literal::String("Hello world!".into()))]
-            }).into()
+            Statement::Expression(Expression::MethodCall(MethodCall {
+                target: "Console".to_string(),
+                method_name: "WriteLine".to_string(),
+                params: vec![Expression::Literal(Literal::String("Hello world!".to_string()))]
+            }))
         ],
         return_ty: Type::Void
-    };
+    });
 
-    TopItem::ClassDecl {
-        name: "Program".into(),
-        inherits_from: None,
-        items: vec![main_method.into()]
-    }
+    TopItem::ClassDecl(ClassDecl {
+        label: fresh_label(),
+        name: "Program".to_string(),
+        superclass: None,
+        items: vec![main_method]
+    })
 }
 
 pub fn hello_world() -> Program {
     Program {
         items: vec![
-            console_class().into(),
-            program_class().into()
+            console_class(),
+            program_class()
         ]
     }
 }
