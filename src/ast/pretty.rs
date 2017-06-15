@@ -1,6 +1,6 @@
 use std::fmt::{self, Display};
 
-use ast::*;
+use super::ast::*;
 
 pub struct PrettyPrinter {
     indentation: u32

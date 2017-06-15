@@ -7,7 +7,6 @@ mod interpreter;
 mod ir;
 mod lowering;
 mod maps;
-mod pretty;
 mod programs;
 
 use ast::visitor::Visitor;

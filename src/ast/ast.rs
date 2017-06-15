@@ -1,7 +1,7 @@
 use std::cell::Cell;
 use std::fmt;
 
-use pretty::PrettyPrinter;
+use super::pretty::PrettyPrinter;
 
 pub type Label = u32;
 
