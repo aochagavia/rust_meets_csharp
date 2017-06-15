@@ -21,7 +21,7 @@ impl<'a> IdentifierCollector<'a> {
 
 impl<'a> Visitor<'a> for IdentifierCollector<'a> {
     fn visit_identifier(&mut self, ident: &'a Identifier) {
-        self.idents.entry(&ident.name).or_insert(Vec::new()).push(1);
+        self.idents.entry(&ident.name).or_insert(Vec::new()).push(ident.label);
         visitor::walk_identifier(self, ident)
     }
 }

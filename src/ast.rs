@@ -76,6 +76,15 @@ pub enum ClassItem {
     MethodDecl(MethodDecl)
 }
 
+impl ClassItem {
+    pub fn method_decl(&self) -> Option<&MethodDecl> {
+        match *self {
+            ClassItem::MethodDecl(ref m) => Some(m),
+            _ => None
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct FieldDecl {
     pub label: Label,
