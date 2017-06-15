@@ -69,6 +69,10 @@ pub trait Visitor<'a>: Sized {
     fn visit_identifier(&mut self, identifier: &'a Identifier) {
         walk_identifier(self, identifier)
     }
+
+    fn visit_this(&mut self) {
+        walk_this(self)
+    }
 }
 
 pub fn walk_program<'a, V: Visitor<'a>>(visitor: &mut V, program: &'a Program) {
@@ -143,7 +147,8 @@ pub fn walk_expression<'a, V: Visitor<'a>>(visitor: &mut V, expr: &'a Expression
         Expression::Literal(ref l) => visitor.visit_literal(l),
         Expression::MethodCall(ref mc) => visitor.visit_method_call(mc),
         Expression::New(ref n) => visitor.visit_new(n),
-        Expression::Identifier(ref i) => visitor.visit_identifier(i)
+        Expression::Identifier(ref i) => visitor.visit_identifier(i),
+        Expression::This => visitor.visit_this()
     }
 }
 
@@ -173,3 +178,5 @@ pub fn walk_new<'a, V: Visitor<'a>>(visitor: &mut V, new: &'a New) {
 }
 
 pub fn walk_identifier<'a, V: Visitor<'a>>(visitor: &mut V, identifier: &'a Identifier) { }
+
+pub fn walk_this<'a, V: Visitor<'a>>(visitor: &mut V) { }

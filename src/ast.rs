@@ -160,6 +160,8 @@ pub enum Expression {
     ///
     /// Represents a variable usage or a class name when calling a static method
     Identifier(Identifier),
+    /// The `this` keyword
+    This,
 }
 
 #[derive(Debug)]

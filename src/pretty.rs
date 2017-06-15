@@ -161,6 +161,9 @@ impl PrettyPrinter {
             Expression::Identifier(ref s) => {
                 s.name.fmt(f)?;
             }
+            Expression::This => {
+                "this".fmt(f)?;
+            }
         }
 
         Ok(())
