@@ -116,8 +116,7 @@ pub enum Statement {
 
 #[derive(Debug)]
 pub struct Assign {
-    pub label: Label,
-    pub var_name: String,
+    pub var_name: Identifier,
     pub expr: Expression
 }
 
@@ -129,8 +128,8 @@ pub struct Return {
 
 #[derive(Debug)]
 pub struct VarDecl {
-    pub label: Label,
-    pub var_name: String,
+    pub label: Label, // FIXME: could we remove this label?
+    pub var_name: Identifier,
     pub ty: Type,
     pub expr: Option<Expression>
 }
@@ -148,8 +147,10 @@ pub enum Expression {
     MethodCall(MethodCall),
     /// New (construct class and allocate it on the heap)
     New(New),
-    /// Variables
-    VarRead(String),
+    /// Identifiers
+    ///
+    /// Represents a variable usage or a class name when calling a static method
+    Identifier(Identifier),
 }
 
 #[derive(Debug)]
@@ -161,16 +162,14 @@ pub struct BinaryOp {
 
 #[derive(Debug)]
 pub struct FieldAccess {
-    pub label: Label,
-    pub var_name: String,
-    pub field_name: String,
+    pub var_name: Identifier,
+    pub field_name: Identifier,
 }
 
 #[derive(Debug)]
 pub struct MethodCall {
     pub label: Label,
-    /// Target can be a variable name, field name or class name
-    pub target: String,
+    pub target: Box<Expression>,
     pub method_name: String,
     pub args: Vec<Expression>
 }
@@ -180,6 +179,18 @@ pub struct New {
     pub label: Label,
     pub class_name: String,
     pub args: Vec<Expression>
+}
+
+#[derive(Debug)]
+pub struct Identifier {
+    pub label: Label,
+    pub name: String
+}
+
+impl fmt::Display for Identifier {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.name.fmt(f)
+    }
 }
 
 /// Literals

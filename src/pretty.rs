@@ -148,7 +148,8 @@ impl PrettyPrinter {
                 l.fmt(f)?;
             }
             Expression::MethodCall(ref call) => {
-                write!(f, "{}.{}(", call.target, call.method_name)?;
+                self.print_expression(f, &call.target)?;
+                write!(f, ".{}(", call.method_name)?;
                 PrettyPrinter::comma_separated(f, &call.args, |f, expr| self.print_expression(f, expr) )?;
                 write!(f, ")")?;
             }
@@ -157,8 +158,8 @@ impl PrettyPrinter {
                 PrettyPrinter::comma_separated(f, &new.args, |f, expr| self.print_expression(f, expr) )?;
                 write!(f, ")")?;
             }
-            Expression::VarRead(ref s) => {
-                s.fmt(f)?;
+            Expression::Identifier(ref s) => {
+                s.name.fmt(f)?;
             }
         }
 

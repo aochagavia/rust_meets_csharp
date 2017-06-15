@@ -66,8 +66,8 @@ pub trait Visitor<'a>: Sized {
         walk_new(self, new)
     }
 
-    fn visit_var_read(&mut self, var_read: &'a str) {
-        walk_var_read(self, var_read)
+    fn visit_identifier(&mut self, identifier: &'a Identifier) {
+        walk_identifier(self, identifier)
     }
 }
 
@@ -119,6 +119,7 @@ pub fn walk_statement<'a, V: Visitor<'a>>(visitor: &mut V, statement: &'a Statem
 }
 
 pub fn walk_assign<'a, V: Visitor<'a>>(visitor: &mut V, assign: &'a Assign) {
+    visitor.visit_identifier(&assign.var_name);
     visitor.visit_expression(&assign.expr)
 }
 
@@ -129,6 +130,7 @@ pub fn walk_return<'a, V: Visitor<'a>>(visitor: &mut V, ret: &'a Return) {
 }
 
 pub fn walk_var_decl<'a, V: Visitor<'a>>(visitor: &mut V, var_decl: &'a VarDecl) {
+    visitor.visit_identifier(&var_decl.var_name);
     if let Some(ref expr) = var_decl.expr {
         visitor.visit_expression(expr);
     }
@@ -141,7 +143,7 @@ pub fn walk_expression<'a, V: Visitor<'a>>(visitor: &mut V, expr: &'a Expression
         Expression::Literal(ref l) => visitor.visit_literal(l),
         Expression::MethodCall(ref mc) => visitor.visit_method_call(mc),
         Expression::New(ref n) => visitor.visit_new(n),
-        Expression::VarRead(ref vr) => visitor.visit_var_read(vr)
+        Expression::Identifier(ref i) => visitor.visit_identifier(i)
     }
 }
 
@@ -150,11 +152,15 @@ pub fn walk_binary_op<'a, V: Visitor<'a>>(visitor: &mut V, binary_op: &'a Binary
     visitor.visit_expression(&binary_op.right);
 }
 
-pub fn walk_field_access<'a, V: Visitor<'a>>(visitor: &mut V, field_access: &'a FieldAccess) { }
+pub fn walk_field_access<'a, V: Visitor<'a>>(visitor: &mut V, field_access: &'a FieldAccess) {
+    visitor.visit_identifier(&field_access.var_name);
+    visitor.visit_identifier(&field_access.field_name);
+}
 
 pub fn walk_literal<'a, V: Visitor<'a>>(visitor: &mut V, literal: &'a Literal) { }
 
 pub fn walk_method_call<'a, V: Visitor<'a>>(visitor: &mut V, method_call: &'a MethodCall) {
+    visitor.visit_expression(&method_call.target);
     for arg in &method_call.args {
         visitor.visit_expression(arg);
     }
@@ -166,4 +172,4 @@ pub fn walk_new<'a, V: Visitor<'a>>(visitor: &mut V, new: &'a New) {
     }
 }
 
-pub fn walk_var_read<'a, V: Visitor<'a>>(visitor: &mut V, var_read: &'a str) { }
+pub fn walk_identifier<'a, V: Visitor<'a>>(visitor: &mut V, identifier: &'a Identifier) { }

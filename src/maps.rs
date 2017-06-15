@@ -15,6 +15,19 @@ pub enum Node<'a> {
     FieldAccess(&'a FieldAccess),
     MethodCall(&'a MethodCall),
     New(&'a New),
+    Identifier(&'a Identifier)
+}
+
+pub struct DefMap<'a> { p: &'a Program}
+
+impl<'a> DefMap<'a> {
+    pub fn get(&'a self, ident: &str) -> ! {
+        unimplemented!()
+    }
+}
+
+pub fn build<'a>(p: &'a Program) -> (NodeMap<'a>, DefMap<'a>) {
+    (NodeMap::build(p), DefMap { p })
 }
 
 // A map from node labels to nodes
@@ -30,7 +43,7 @@ impl<'a> NodeMap<'a> {
         NodeMap { map: visitor.map }
     }
 
-    pub fn get_node(&self, label: Label) -> Option<Node<'a>> {
+    pub fn get(&self, label: Label) -> Option<Node<'a>> {
         self.map.get(&label).cloned()
     }
 }
@@ -71,24 +84,31 @@ impl<'a> Visitor<'a> for NodeMapVisitor<'a> {
         visitor::walk_param(self, param)
     }
 
-    fn visit_assign(&mut self, assign: &'a Assign) {
-        self.insert(assign.label, assign, Node::Assign);
-        visitor::walk_assign(self, assign)
-    }
+    // No longer necessary?
+    // fn visit_assign(&mut self, assign: &'a Assign) {
+    //     self.insert(assign.label, assign, Node::Assign);
+    //     visitor::walk_assign(self, assign)
+    // }
 
     fn visit_var_decl(&mut self, decl: &'a VarDecl) {
         self.insert(decl.label, decl, Node::VarDecl);
         visitor::walk_var_decl(self, decl)
     }
 
-    fn visit_field_access(&mut self, fa: &'a FieldAccess) {
-        self.insert(fa.label, fa, Node::FieldAccess);
-        visitor::walk_field_access(self, fa)
-    }
+    // No longer necessary?
+    // fn visit_field_access(&mut self, fa: &'a FieldAccess) {
+    //     self.insert(fa.label, fa, Node::FieldAccess);
+    //     visitor::walk_field_access(self, fa)
+    // }
 
     fn visit_method_call(&mut self, mc: &'a MethodCall) {
         self.insert(mc.label, mc, Node::MethodCall);
         visitor::walk_method_call(self, mc)
+    }
+
+    fn visit_identifier(&mut self, ident: &'a Identifier) {
+        self.insert(ident.label, ident, Node::Identifier);
+        visitor::walk_identifier(self, ident)
     }
 
     fn visit_new(&mut self, new: &'a New) {

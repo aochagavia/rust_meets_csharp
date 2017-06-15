@@ -33,7 +33,7 @@ fn program_class() -> TopItem {
         body: vec![
             Statement::Expression(Expression::MethodCall(MethodCall {
                 label: fresh_label(),
-                target: "Console".to_string(),
+                target: Box::new(Expression::Identifier(Identifier { name: "Console".to_string(), label: fresh_label() })),
                 method_name: "WriteLine".to_string(),
                 args: vec![Expression::Literal(Literal::String("Hello world!".to_string()))]
             }))
