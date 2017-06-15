@@ -1,16 +1,18 @@
 #![allow(dead_code, unused_variables)]
 
+mod analysis;
 mod ast;
 mod identifier_collector;
 mod interpreter;
+mod ir;
+mod lowering;
 mod maps;
 mod pretty;
 mod programs;
-mod visitor;
 
+use ast::visitor::Visitor;
 use identifier_collector::IdentifierCollector;
 use maps::{DefMap, Node, NodeMap};
-use visitor::Visitor;
 
 fn main() {
     let hw = programs::hello_world();
@@ -27,6 +29,10 @@ fn main() {
     for s in ctx.get_method_list(9).expect("Get method list failed") {
         println!("{}", s);
     }
+    println!("=== Compiling");
+    let (p, metadata) = lowering::lower(&hw);
+    println!("=== Running");
+    interpreter::run(&p, metadata);
 }
 
 struct Context<'a> {

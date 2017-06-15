@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use ast::*;
-use visitor::{self, Visitor};
+use ast::visitor::{self, Visitor};
 
 // Note that copying a Node results in a shallow copy
 #[derive(Copy, Clone, Debug)]

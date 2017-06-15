@@ -3,7 +3,7 @@
 use ast;
 
 pub struct Program {
-    pub entry_point: Method
+    pub entry_point: usize
 }
 
 #[derive(Clone)]

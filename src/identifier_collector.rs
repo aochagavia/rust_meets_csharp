@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use ast::{self, Identifier};
-use visitor::{self, Visitor};
+use ast::visitor::{self, Visitor};
 
 pub struct IdentifierCollector<'a> {
     pub idents: HashMap<&'a str, Vec<ast::Label>>
