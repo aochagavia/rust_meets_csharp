@@ -1,5 +1,8 @@
+#![allow(dead_code, unused_variables)]
+
 mod ast;
 mod identifier_collector;
+mod interpreter;
 mod maps;
 mod pretty;
 mod programs;
@@ -48,6 +51,7 @@ impl<'a> Context<'a> {
                 // If we are here, it means that the target is an identifier and that
                 // it corresponds to a class definition.
                 // FIXME: we are assuming that class names cannot be shadowed!
+                // Is name resolution on-demand in Roslyn?
                 Some(self.get_static_methods(def_label))
             }
             None => {

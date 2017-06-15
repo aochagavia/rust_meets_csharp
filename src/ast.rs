@@ -205,11 +205,14 @@ impl fmt::Display for Identifier {
 /// Literals
 #[derive(Debug)]
 pub enum Literal {
+    /// Int
     Int(i64),
     /// String
     String(String),
     /// List
-    Array(Vec<Expression>)
+    Array(Type, Vec<Expression>),
+    /// Null
+    Null
 }
 
 impl fmt::Display for Literal {
@@ -217,13 +220,14 @@ impl fmt::Display for Literal {
         match *self {
             Literal::Int(x) => x.fmt(f),
             Literal::String(ref s) => write!(f, "\"{}\"", s),
-            Literal::Array(_) => unimplemented!()
+            Literal::Null => "null".fmt(f),
+            Literal::Array(_, _) => unimplemented!()
         }
     }
 }
 
 /// Operators
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum BinaryOperator {
     Add,
     Sub,
