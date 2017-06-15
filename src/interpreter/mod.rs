@@ -8,13 +8,25 @@ mod runtime;
 
 use self::runtime as rt;
 
+// FIXME: this information is statically known... Right now, we leave it as-is,
+// because it makes lowering easier. In the future it would make sense to let the
+// IR be a graph, similar to Rust's MIR. We could split the code into basic blocks,
+// where the statements are executed in sequential order and at the end jump to another
+// basic block. This will become especially interesting when we introduce control flow
+// stuff such as if-then-else statements and loops.
 enum Action {
     NextStatement,
     Return(Option<rt::Value>)
 }
 
+struct ClassInfo {
+    superclass_id: Option<usize>,
+    name: String,
+    field_names: Vec<String>,
+}
+
 pub struct Interpreter {
-    field_names: Vec<Vec<String>>,
+    classes: Vec<ClassInfo>,
     methods: Vec<ir::Method>,
     stack: Vec<rt::Value>,
     stack_ptr: usize,
@@ -25,18 +37,31 @@ impl Interpreter {
         self.run_method(&p.entry_point, vec![]);
     }
 
+    // Note: var_id is 0-based
     fn stack_addr(&self, var_id: usize) -> usize {
         self.stack_ptr + var_id
     }
 
     fn run_method(&mut self, m: &ir::Method, args: Vec<rt::Value>) -> Option<rt::Value> {
+        // Allocate arguments on the stack
+        let sp = self.stack_ptr;
+        self.stack_ptr = self.stack.len();
+        self.stack.extend(args);
+
+        // Run the statements
+        let mut ret = None;
         for s in &m.body {
             if let Action::Return(val) = self.run_statement(s) {
-                return val;
+                ret = val;
+                break;
             }
         }
 
-        None
+        // Free stack space
+        self.stack_ptr = sp;
+        self.stack.truncate(sp);
+
+        ret
     }
 
     fn run_statement(&mut self, s: &ir::Statement) -> Action {
@@ -93,7 +118,7 @@ impl Interpreter {
                 self.stack[addr].clone()
             }
             NewObject(class_id) => {
-                let fields = vec![rt::Value::Null; self.field_names[class_id].len()];
+                let fields = vec![rt::Value::Null; self.classes[class_id].field_names.len()];
                 rt::Value::Object(rt::Object { class_id, fields })
             }
         }
@@ -158,10 +183,15 @@ impl Interpreter {
             }
             rt::Value::Int(i) => print!("{}", i),
             rt::Value::Object(ref obj) => {
-                let field_names = &self.field_names[obj.class_id];
-                for (name, value) in field_names.iter().zip(obj.fields.iter()) {
-
+                let class = &self.classes[obj.class_id];
+                println!("{} {{", class.name);
+                // Note: superclass fields are included in this list
+                for (name, value) in class.field_names.iter().zip(obj.fields.iter()) {
+                    print!("    {}: ", name);
+                    self.print_value(value);
+                    println!(",");
                 }
+                print!("}}");
             }
             rt::Value::Null => print!("null")
         }
