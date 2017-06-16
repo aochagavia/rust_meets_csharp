@@ -173,7 +173,7 @@ pub struct BinaryOp {
 
 #[derive(Debug)]
 pub struct FieldAccess {
-    pub var_name: Identifier,
+    pub target: Box<Expression>,
     pub field_name: Identifier,
 }
 
@@ -229,7 +229,7 @@ impl fmt::Display for Literal {
 }
 
 /// Operators
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum BinaryOperator {
     Add,
     Sub,

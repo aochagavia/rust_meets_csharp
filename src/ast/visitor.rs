@@ -158,7 +158,7 @@ pub fn walk_binary_op<'a, V: Visitor<'a>>(visitor: &mut V, binary_op: &'a Binary
 }
 
 pub fn walk_field_access<'a, V: Visitor<'a>>(visitor: &mut V, field_access: &'a FieldAccess) {
-    visitor.visit_identifier(&field_access.var_name);
+    visitor.visit_expression(&field_access.target);
     visitor.visit_identifier(&field_access.field_name);
 }
 

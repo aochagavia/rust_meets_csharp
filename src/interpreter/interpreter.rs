@@ -81,8 +81,9 @@ impl Interpreter {
         use self::ir::Expression::*;
         match *e {
             FieldAccess(ref fa) => {
-                let addr = self.stack_addr(fa.var_id);
-                match self.stack[addr] {
+                let target = self.run_expression(&fa.target);
+                // Because of type checking, we know this is an object
+                match target {
                     // FIXME: we do nothing to deal with by ref vs by val
                     rt::Value::Object(ref obj) => obj.fields[fa.field_id].clone(),
                     _ => unreachable!()

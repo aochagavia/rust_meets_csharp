@@ -28,7 +28,7 @@ pub struct Assign {
 
 #[derive(Clone)]
 pub enum Expression {
-    FieldAccess(FieldAccess),
+    FieldAccess(Box<FieldAccess>),
     Literal(Literal),
     /// BinaryOp desugars into intrinsic
     Intrinsic(Box<Intrinsic>),
@@ -41,7 +41,7 @@ pub enum Expression {
 
 #[derive(Clone)]
 pub struct FieldAccess {
-    pub var_id: usize,
+    pub target: Expression,
     pub field_id: usize
 }
 

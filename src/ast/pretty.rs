@@ -142,7 +142,8 @@ impl PrettyPrinter {
                 self.print_expression(f, &op.right)?;
             }
             Expression::FieldAccess(ref access) => {
-                write!(f, "{}.{}", access.var_name, access.field_name)?;
+                self.print_expression(f, &access.target)?;
+                write!(f, ".{}", access.field_name)?;
             }
             Expression::Literal(ref l) => {
                 l.fmt(f)?;
