@@ -9,8 +9,8 @@ mod runtime;
 pub fn run(p: &::ir::Program, ctx: ::lowering::ProgramMetadata) {
     self::interpreter::Interpreter {
         classes: ctx.classes,
-        methods: ctx.methods,
+        program: &p,
         stack: Vec::new(),
         stack_ptr: 0
-    }.run(p);
+    }.run();
 }

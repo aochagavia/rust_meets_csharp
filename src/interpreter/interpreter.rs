@@ -14,17 +14,18 @@ enum Action {
     Return(Option<rt::Value>)
 }
 
-pub struct Interpreter {
+pub struct Interpreter<'a> {
     pub classes: Vec<ClassInfo>,
-    pub methods: Vec<ir::Method>,
     pub stack: Vec<rt::Value>,
     pub stack_ptr: usize,
+    pub program: &'a ir::Program
 }
 
-impl Interpreter {
-    pub fn run(&mut self, p: &ir::Program) {
+impl<'a> Interpreter<'a> {
+    pub fn run(&mut self) {
         // FIXME: remove clone
-        let method = self.methods[p.entry_point].clone();
+        let ep = self.program.entry_point;
+        let method = self.program.methods[ep].clone();
         self.run_method(&method, vec![]);
     }
 
@@ -98,7 +99,7 @@ impl Interpreter {
             MethodCall(ref mc) => {
                 // Obtain method based on method_id
                 // FIXME: do something better than cloning
-                let method = &self.methods[mc.method_id].clone();
+                let method = &self.program.methods[mc.method_id].clone();
                 let args = mc.arguments.iter().map(|expr| self.run_expression(expr)).collect();
 
                 // Note: for void methods we just return null. The return type will be ignored anyway.

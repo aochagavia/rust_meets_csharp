@@ -1,14 +1,16 @@
+use std::mem;
+
 use analysis::ClassInfo;
 use ast;
 use ir;
 
 pub struct ProgramMetadata {
     pub classes: Vec<ClassInfo>,
-    pub methods: Vec<ir::Method>
 }
 
 pub struct LoweringContext {
-    pub metadata: ProgramMetadata
+    pub metadata: ProgramMetadata,
+    pub methods: Vec<ir::Method>
 }
 
 pub fn lower(p: &ast::Program) -> (ir::Program, ProgramMetadata) {
@@ -43,13 +45,22 @@ pub fn lower(p: &ast::Program) -> (ir::Program, ProgramMetadata) {
         }
     ];
 
-    (ir::Program { entry_point }, ProgramMetadata { classes, methods })
+    (ir::Program { entry_point, methods }, ProgramMetadata { classes })
 }
 
 impl LoweringContext {
-    fn lower_program(&mut self, p: &ast::Program) {
+    fn lower_program(mut self, p: &ast::Program) -> ir::Program {
+        // Lowering class declarations will automatically populate the metadata
         for &ast::TopItem::ClassDecl(ref cd) in &p.items {
             self.lower_class_decl(cd);
+        }
+
+        let entry_point = unimplemented!();
+
+
+        ir::Program {
+            entry_point,
+            methods: mem::replace(&mut self.methods, Vec::new())
         }
     }
 

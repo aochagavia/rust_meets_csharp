@@ -3,7 +3,8 @@
 use ast;
 
 pub struct Program {
-    pub entry_point: usize
+    pub entry_point: usize,
+    pub methods: Vec<Method>
 }
 
 #[derive(Clone)]
