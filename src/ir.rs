@@ -4,13 +4,11 @@ use ast;
 use analysis::{ClassId, FieldId, MethodId, VarId};
 
 pub struct Program {
-    pub entry_point: usize,
     pub methods: Vec<Method>
 }
 
 #[derive(Clone)]
 pub struct Method {
-    //pub params: Vec<()>
     pub body: Vec<Statement>
 }
 
@@ -24,7 +22,7 @@ pub enum Statement {
 
 #[derive(Clone)]
 pub struct Assign {
-    pub var_id: usize,
+    pub var_id: VarId,
     pub value: Expression
 }
 

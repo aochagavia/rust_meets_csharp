@@ -125,7 +125,8 @@ pub enum Statement {
 
 #[derive(Debug)]
 pub struct Assign {
-    pub var_name: Identifier,
+    pub label: Label,
+    pub var_name: String,
     pub expr: Expression
 }
 
@@ -138,7 +139,7 @@ pub struct Return {
 #[derive(Debug)]
 pub struct VarDecl {
     pub label: Label, // FIXME: could we remove this label?
-    pub var_name: Identifier,
+    pub var_name: String,
     pub ty: Type,
     pub expr: Option<Expression>
 }
@@ -176,7 +177,7 @@ pub struct BinaryOp {
 pub struct FieldAccess {
     pub label: Label,
     pub target: Box<Expression>,
-    pub field_name: Identifier,
+    pub field_name: String,
 }
 
 #[derive(Debug)]

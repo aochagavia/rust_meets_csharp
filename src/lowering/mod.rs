@@ -1,33 +1,18 @@
-use std::mem;
-
 use analysis::{self, ClassInfo, MethodId, VarId, QueryEngine};
 use ast;
 use ir;
 
 pub struct ProgramMetadata {
     pub classes: Vec<ClassInfo>,
+    pub entry_point: MethodId
 }
 
-pub struct LoweringContext {
-    pub metadata: ProgramMetadata,
-    pub methods: Vec<ir::Method>,
-    pub query_engine: QueryEngine
+pub struct LoweringContext<'engine, 'a: 'engine> {
+    pub query_engine: &'engine mut QueryEngine<'a>
 }
 
-pub fn lower(p: &ast::Program) -> (ir::Program, ProgramMetadata) {
-    // FIXME: implement real lowering
-    // Note: we only want to lower a Program if it passes all checks...
-    // When performing on-demand analysis, we need to ensure all code is valid, including dead code.
-
-    let classes = vec![
-        ClassInfo {
-            superclass_id: None,
-            name: "Console".to_string(),
-            field_names: Vec::new(),
-            methods: vec![0]
-        }
-    ];
-    let entry_point = 0;
+/*
+pub fn hello_world() -> ir::Program) {
     let methods = vec![
         ir::Method {
             body: vec![
@@ -45,71 +30,66 @@ pub fn lower(p: &ast::Program) -> (ir::Program, ProgramMetadata) {
             ]
         }
     ];
-
-    (ir::Program { entry_point, methods }, ProgramMetadata { classes })
 }
+*/
 
-impl LoweringContext {
-    fn lower_program(mut self, p: &ast::Program) -> ir::Program {
-        // Lowering class declarations will automatically populate the metadata
-        for &ast::TopItem::ClassDecl(ref cd) in &p.items {
-            self.lower_class_decl(cd);
+impl<'a, 'engine> LoweringContext<'a, 'engine> {
+    pub fn lower_program(mut self) -> ir::Program {
+        let mut methods = Vec::new();
+
+        // Generate code for intrinsics
+        for intrinsic in QueryEngine::intrinsics() {
+            methods.push(self.lower_intrinsic_method(intrinsic));
         }
 
-        let entry_point = unimplemented!();
-
-        ir::Program {
-            entry_point,
-            methods: mem::replace(&mut self.methods, Vec::new())
+        // Generate code for user defined methods
+        for md in self.query_engine.methods() {
+            methods.push(self.lower_method(md));
         }
+
+        ir::Program { methods }
     }
 
-    fn lower_class_decl(&mut self, c: &ast::ClassDecl) {
-        // Query class methods
+    fn lower_intrinsic_method(&mut self, intrinsic: analysis::IntrinsicInfo) -> ir::Method {
+        unimplemented!()
     }
 
-    fn lower_method(&mut self, m: &ast::MethodDecl) {
-        let param_count = if m.is_static {
-            m.params.len()
-        } else {
-            // `this` is passed as a parameter
-            m.params.len() + 1
-        };
-
-        let mut lowered_body = Vec::new();
+    fn lower_method(&mut self, m: &ast::MethodDecl) -> ir::Method {
+        let mut body = Vec::new();
         for stmt in &m.body {
-            match *stmt {
-                ast::Statement::Assign(ref assign) => {
-                    // We need name resolution information here
-                    // Which id does this variable have?
-                    // assign.var_name needs to be mapped to an id in the function...
-                    // In other words, each function needs a HashMap<Label, usize>
-                    // ?
-                    // If we know this, we can proceed
-                    // FIXME: check that assign.expr has the same type of the variable
-                    let var_id = unimplemented!();
-                    let value = self.lower_expression(&assign.expr);
-                    lowered_body.push(ir::Statement::Assign(ir::Assign { var_id, value }));
-                }
-                ast::Statement::Expression(ref expr) => {
-                    let expr = self.lower_expression(expr);
-                    lowered_body.push(ir::Statement::Expression(expr));
-                }
-                ast::Statement::Return(ref ret) => {
-                    // FIXME: check that the return value matches the function's return type
-                    let expr = ret.expr.as_ref().map(|r| self.lower_expression(r));
-                    lowered_body.push(ir::Statement::Return(expr));
-                }
-                ast::Statement::VarDecl(ref var_decl) => {
-                    lowered_body.push(ir::Statement::VarDecl);
+            self.lower_statement(stmt, &mut body);
+        }
 
-                    // Again, we need name resolution information if we want to write to the variable
-                    // We should be able to get the var_id from the same HashMap<Label, usize>
-                    let var_id = unimplemented!();
-                    let value = var_decl.expr.as_ref().map(|e| self.lower_expression(e));
-                    if let Some(value) = value {
-                        lowered_body.push(ir::Statement::Assign(ir::Assign { var_id, value }))
-                    }
+        ir::Method { body }
+    }
+
+    fn lower_statement(&mut self, s: &ast::Statement, body: &mut Vec<ir::Statement>) {
+        match *s {
+            ast::Statement::Assign(ref assign) => {
+                body.push(self.lower_assignment(assign.label, &assign.expr));
+            }
+            ast::Statement::Expression(ref expr) => {
+                let expr = self.lower_expression(expr);
+                body.push(ir::Statement::Expression(expr));
+            }
+            ast::Statement::Return(ref ret) => {
+                let parent_method = self.query_engine.query_parent_method(ret.label);
+                let ret_ty = self.query_engine.query_return_type(parent_method);
+
+                let expr_ty = ret.expr.as_ref().map(|e| self.query_engine.query_expr_type(e.label()).unwrap())
+                                                .unwrap_or(analysis::Type::Void);
+
+                if ret_ty != expr_ty {
+                    panic!("Type mismatch in return statement: {:?} and {:?}", ret_ty, expr_ty);
+                }
+
+                let expr = ret.expr.as_ref().map(|r| self.lower_expression(r));
+                body.push(ir::Statement::Return(expr));
+            }
+            ast::Statement::VarDecl(ref var_decl) => {
+                body.push(ir::Statement::VarDecl);
+                if let Some(ref expr) = var_decl.expr {
+                    body.push(self.lower_assignment(var_decl.label, expr));
                 }
             }
         }
@@ -139,7 +119,7 @@ impl LoweringContext {
                 // Query type and field id
                 let target_ty = self.query_engine.query_expr_type(fa.target.label()).unwrap().clone();
                 let field_id = match target_ty {
-                    analysis::Type::Class(id) => self.query_engine.query_field(id, &fa.field_name.name),
+                    analysis::Type::Class(id) => self.query_engine.query_field(id, &fa.field_name),
                     ty => panic!("Invalid type in field access target: {:?}", ty)
                 };
 
@@ -160,7 +140,7 @@ impl LoweringContext {
             }
             ast::Expression::MethodCall(ref mc) => {
                 // Query type and method id
-                let target_ty = self.query_engine.query_expr_type(mc.target.label()).cloned();
+                let target_ty = self.query_engine.query_expr_type(mc.target.label());
                 match target_ty {
                     Some(analysis::Type::Class(id)) => {
                         // FIXME: error reporting when method doesn't exist
@@ -191,7 +171,7 @@ impl LoweringContext {
                 }
             }
             ast::Expression::New(ref n) => {
-                // TODO: error reporting when class doesn't exist
+                // FIXME: error reporting when class doesn't exist
                 let class_id = self.query_engine.query_class(&n.class_name).unwrap();
                 // Note that a class always has a constructor
                 let constructor_id = self.query_engine.query_constructor(class_id);
@@ -204,11 +184,29 @@ impl LoweringContext {
                 let var_id = self.query_engine.query_var(i.label);
                 ir::Expression::VarRead(var_id)
             }
-            ast::Expression::This(_) => {
+            ast::Expression::This(label) => {
+                let parent = self.query_engine.query_parent_method(label);
+                if self.query_engine.query_is_static(parent) {
+                    panic!("`this` keyword used inside static method");
+                }
+
                 // When used from a method, the first parameter will always be this
                 ir::Expression::VarRead(VarId::this())
             }
         }
+    }
+
+    fn lower_assignment(&mut self, target: ast::Label, expr: &ast::Expression) -> ir::Statement {
+        // Note: the only assignable things are variables. No array indexing.
+        let var_id = self.query_engine.query_var_decl(target);
+        let var_ty = self.query_engine.query_var_type(var_id).clone();
+        let expr_ty = self.query_engine.query_expr_type(expr.label()).unwrap().clone();
+        if var_ty != expr_ty {
+            panic!("Type mismatch in assignment: {:?} and {:?}", var_ty, expr_ty);
+        }
+
+        let value = self.lower_expression(expr);
+        ir::Statement::Assign(ir::Assign { var_id, value })
     }
 
     fn lower_method_call(&mut self, target: ir::Expression, method_id: MethodId, args: &[ast::Expression]) -> ir::Expression {

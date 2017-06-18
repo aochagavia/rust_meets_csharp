@@ -1,6 +1,6 @@
 use super::runtime as rt;
 
-use analysis::ClassInfo;
+use analysis::{ClassInfo, MethodId};
 use ir;
 
 // FIXME: this information is statically known... Right now, we leave it as-is,
@@ -22,10 +22,9 @@ pub struct Interpreter<'a> {
 }
 
 impl<'a> Interpreter<'a> {
-    pub fn run(&mut self) {
+    pub fn run(&mut self, entry_point: MethodId) {
         // FIXME: remove clone
-        let ep = self.program.entry_point;
-        let method = self.program.methods[ep].clone();
+        let method = self.program.methods[entry_point.0].clone();
         self.run_method(&method, vec![]);
     }
 
@@ -60,7 +59,7 @@ impl<'a> Interpreter<'a> {
         use self::ir::Statement::*;
         match *s {
             Assign(ref assign) => {
-                let addr = self.stack_addr(assign.var_id);
+                let addr = self.stack_addr(assign.var_id.0);
                 self.stack[addr] = self.run_expression(&assign.value);
                 Action::NextStatement
             }

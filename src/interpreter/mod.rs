@@ -6,11 +6,13 @@
 mod interpreter;
 mod runtime;
 
-pub fn run(p: &::ir::Program, ctx: ::lowering::ProgramMetadata) {
+use analysis::{self, MethodId};
+
+pub fn run(program: &::ir::Program, entry_point: MethodId, classes: Vec<analysis::ClassInfo>) {
     self::interpreter::Interpreter {
-        classes: ctx.classes,
-        program: &p,
+        classes,
+        program,
         stack: Vec::new(),
         stack_ptr: 0
-    }.run();
+    }.run(entry_point);
 }

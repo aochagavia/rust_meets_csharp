@@ -1,22 +1,26 @@
-#![allow(dead_code, unused_variables)]
+#![allow(dead_code)]
 
 mod analysis;
 mod ast;
-mod identifier_collector;
+//mod identifier_collector;
 mod interpreter;
 mod ir;
 mod lowering;
-mod maps;
+//mod maps;
 mod programs;
 
-use ast::visitor::Visitor;
-use identifier_collector::IdentifierCollector;
-use maps::{DefMap, Node, NodeMap};
+use analysis::QueryEngine;
+use lowering::LoweringContext;
+
+//use ast::visitor::Visitor;
+//use identifier_collector::IdentifierCollector;
+//use maps::{DefMap, Node, NodeMap};
 
 fn main() {
     let hw = programs::hello_world();
     println!("=== Hello world:");
     println!("{}", hw);
+    /*
     let mut ctx = Context::new(&hw);
     let mut ic = IdentifierCollector::new();
     ic.visit_program(&hw);
@@ -28,12 +32,18 @@ fn main() {
     for s in ctx.get_method_list(9).expect("Get method list failed") {
         println!("{}", s);
     }
+    */
     println!("=== Compiling");
-    let (p, metadata) = lowering::lower(&hw);
+    let mut query_engine = QueryEngine::new(&hw);
+    let p = LoweringContext { query_engine: &mut query_engine }.lower_program();
+    let entry_point = query_engine.query_entry_point();
     println!("=== Running");
-    interpreter::run(&p, metadata);
+
+    // FIXME: replace Vec::new by a real Vec<ClassInfo>
+    interpreter::run(&p, entry_point, Vec::new());
 }
 
+/*
 struct Context<'a> {
     pub program: &'a ast::Program,
     pub nodes: NodeMap<'a>,
@@ -101,3 +111,4 @@ impl<'a> Context<'a> {
         ret
     }
 }
+*/

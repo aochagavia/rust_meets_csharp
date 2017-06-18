@@ -6,10 +6,9 @@ pub struct ClassInfo {
     pub superclass_id: Option<usize>,
     pub name: String,
     pub field_names: Vec<String>,
-
-    // FIXME: should we make a distinction between static and dynamic methods?
-    pub methods: Vec<usize>,
 }
+
+pub struct IntrinsicInfo;
 
 // FIXME: make the inner field private
 #[derive(Clone, Copy, Debug)]
@@ -29,16 +28,19 @@ impl VarId {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct TypeId(usize);
+
 // FIXME: make the inner field private
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ClassId(pub usize);
 
 /// Represents the type of an expression
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Type {
     Int,
     String,
-    Array(Box<Type>),
+    Array(TypeId),
     Void,
     Class(ClassId)
 }
