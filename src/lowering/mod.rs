@@ -12,7 +12,7 @@ pub struct LoweringContext<'engine, 'a: 'engine> {
 }
 
 /*
-pub fn hello_world() -> ir::Program) {
+pub fn hello_world() -> ir::Program {
     let methods = vec![
         ir::Method {
             body: vec![
@@ -39,8 +39,11 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
 
         // Generate code for intrinsics
         for intrinsic in QueryEngine::intrinsics() {
-            methods.push(self.lower_intrinsic_method(intrinsic));
+            methods.push(self.lower_console_write_line(intrinsic));
         }
+
+        // Note, in the future we could also generate code for prelude methods
+        // i.e. int.Max
 
         // Generate code for user defined methods
         for md in self.query_engine.methods() {
@@ -50,8 +53,24 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
         ir::Program { methods }
     }
 
-    fn lower_intrinsic_method(&mut self, intrinsic: analysis::IntrinsicInfo) -> ir::Method {
-        unimplemented!()
+    fn lower_console_write_line(&mut self, _: analysis::IntrinsicInfo) -> ir::Method {
+        // We assume that the arguments are correctly passed. This is enforced by the type checker
+        // This method corresponds to Console.WriteLine
+        ir::Method {
+            body: vec![
+                ir::Statement::Expression(
+                    ir::Expression::Intrinsic(
+                        Box::new(
+                            ir::Intrinsic::PrintLine(
+                                ir::Expression::VarRead(
+                                    VarId(0)
+                                )
+                            )
+                        )
+                    )
+                )
+            ]
+        }
     }
 
     fn lower_method(&mut self, m: &ast::MethodDecl) -> ir::Method {
@@ -76,8 +95,9 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
                 let parent_method = self.query_engine.query_parent_method(ret.label);
                 let ret_ty = self.query_engine.query_return_type(parent_method);
 
+                let void_id = self.query_engine.types_mut().get_id(analysis::Type::Void);
                 let expr_ty = ret.expr.as_ref().map(|e| self.query_engine.query_expr_type(e.label()).unwrap())
-                                                .unwrap_or(analysis::Type::Void);
+                                               .unwrap_or(void_id);
 
                 if ret_ty != expr_ty {
                     panic!("Type mismatch in return statement: {:?} and {:?}", ret_ty, expr_ty);
@@ -100,13 +120,12 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
             ast::Expression::BinaryOp(ref bin_op) => {
                 // First, type check
                 // Safe to unwrap, since we know that expressions always have a type
-                let left_ty = self.query_engine.query_expr_type(bin_op.left.label()).unwrap().clone();
-                let right_ty = self.query_engine.query_expr_type(bin_op.right.label()).unwrap().clone();
+                let left_ty = self.query_engine.query_expr_type(bin_op.left.label()).unwrap();
+                let right_ty = self.query_engine.query_expr_type(bin_op.right.label()).unwrap();
 
-                match (left_ty, right_ty) {
-                    (analysis::Type::Int, analysis::Type::Int) => (),
-                    (l, r) => panic!("Invalid types in binary operator: {:?} and {:?}. Only int allowed!",
-                                     l, r)
+                let type_correct = left_ty == right_ty && self.query_engine.types().get(left_ty) == analysis::Type::Int;
+                if !type_correct {
+                    panic!("Invalid types in binary operator: {:?} and {:?}. Only int allowed!", left_ty, right_ty)
                 }
 
                 // Generate code
@@ -117,8 +136,11 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
             }
             ast::Expression::FieldAccess(ref fa) => {
                 // Query type and field id
-                let target_ty = self.query_engine.query_expr_type(fa.target.label()).unwrap().clone();
-                let field_id = match target_ty {
+                let target_ty = match self.query_engine.query_expr_type(fa.target.label()) {
+                    Some(target_ty) => target_ty,
+                    None => panic!("Attempt to access field on undefined identifier: {:?}", fa.target)
+                };
+                let field_id = match self.query_engine.types().get(target_ty) {
                     analysis::Type::Class(id) => self.query_engine.query_field(id, &fa.field_name),
                     ty => panic!("Invalid type in field access target: {:?}", ty)
                 };
@@ -140,19 +162,25 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
             }
             ast::Expression::MethodCall(ref mc) => {
                 // Query type and method id
-                let target_ty = self.query_engine.query_expr_type(mc.target.label());
-                match target_ty {
-                    Some(analysis::Type::Class(id)) => {
-                        // FIXME: error reporting when method doesn't exist
-                        // FIXME: check that the types match between arguments and parameters
-                        let method_id = self.query_engine.query_method(id, &mc.method_name);
-                        let expr = self.lower_expression(&mc.target);
-                        self.lower_method_call(expr, method_id, &mc.args)
+                match self.query_engine.query_expr_type(mc.target.label()) {
+                    Some(target_ty) => {
+                        // Non-static method call
+                        match self.query_engine.types().get(target_ty) {
+                            analysis::Type::Class(id) => {
+                                match self.query_engine.query_method(id, &mc.method_name) {
+                                    Some(method_id) => {
+                                        let expr = self.lower_expression(&mc.target);
+                                        self.lower_method_call(expr, method_id, &mc.args)
+                                    }
+                                    None => panic!("Method doesn't exist: {}", mc.method_name)
+                                }
+                            }
+                            ty => panic!("Method call target is not an object: {:?}", ty),
+                        }
                     }
-                    Some(ty) => panic!("Invalid type in method call target: {:?}", ty),
                     None => {
                         // The target has no type, which means that it is not an expression
-                        // Therefore it should be a class name and this is a static method
+                        // Therefore, assume it the target is a class name and the method is static
                         let class_name = match *mc.target {
                             ast::Expression::Identifier(ref i) => &i.name,
                             _ => unreachable!()
@@ -160,10 +188,10 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
 
                         match self.query_engine.query_class(class_name) {
                             Some(class_id) => {
-                                // FIXME: error reporting when method doesn't exist
-                                // FIXME: check that the types match between arguments and parameters
-                                let method_id = self.query_engine.query_method(class_id, &mc.method_name);
-                                self.lower_static_method_call(method_id, &mc.args)
+                                match self.query_engine.query_method(class_id, &mc.method_name) {
+                                    Some(method_id) => self.lower_static_method_call(method_id, &mc.args),
+                                    None => panic!("Method doesn't exist: {}", mc.method_name)
+                                }
                             }
                             None => panic!("Undeclared variable: {}", class_name)
                         }
@@ -171,14 +199,15 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
                 }
             }
             ast::Expression::New(ref n) => {
-                // FIXME: error reporting when class doesn't exist
-                let class_id = self.query_engine.query_class(&n.class_name).unwrap();
-                // Note that a class always has a constructor
-                let constructor_id = self.query_engine.query_constructor(class_id);
+                match self.query_engine.query_class(&n.class_name) {
+                    Some(class_id) => {
+                        // Note that a class always has a constructor
+                        let constructor_id = self.query_engine.query_constructor(class_id);
+                        self.lower_method_call(ir::Expression::NewObject(class_id), constructor_id, &n.args)
+                    }
+                    None => panic!("Class doesn't exist: {}. How could it ever have a constructor?", n.class_name)
+                }
 
-                // FIXME: check that the types match between arguments and parameters
-
-                self.lower_method_call(ir::Expression::NewObject(class_id), constructor_id, &n.args)
             }
             ast::Expression::Identifier(ref i) => {
                 let var_id = self.query_engine.query_var(i.label);
@@ -197,10 +226,10 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
     }
 
     fn lower_assignment(&mut self, target: ast::Label, expr: &ast::Expression) -> ir::Statement {
-        // Note: the only assignable things are variables. No array indexing.
+        // Note: right now, the only lvalues are variables. No array indexing.
         let var_id = self.query_engine.query_var_decl(target);
-        let var_ty = self.query_engine.query_var_type(var_id).clone();
-        let expr_ty = self.query_engine.query_expr_type(expr.label()).unwrap().clone();
+        let var_ty = self.query_engine.query_var_type(var_id);
+        let expr_ty = self.query_engine.query_expr_type(expr.label()).unwrap();
         if var_ty != expr_ty {
             panic!("Type mismatch in assignment: {:?} and {:?}", var_ty, expr_ty);
         }
@@ -212,7 +241,20 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
     fn lower_method_call(&mut self, target: ir::Expression, method_id: MethodId, args: &[ast::Expression]) -> ir::Expression {
         // Note: we need to pass the target expression as a first argument to the function
         let mut arguments = vec![target];
-        arguments.extend(args.iter().map(|a| self.lower_expression(a)));
+
+        // Note, we skip the first param here since we already know it is type correct and
+        // we have already generated the code for its corresponding argument
+        let params = self.query_engine.query_param_types(method_id).into_iter().skip(1);
+        for (arg, param_ty) in args.iter().zip(params) {
+            // Type check argument and param
+            let arg_ty = self.query_engine.query_expr_type(arg.label()).expect("Unreachable");
+            if arg_ty != param_ty {
+                panic!("Mismatched types between argument and parameter: {:?} and {:?}", arg_ty, param_ty);
+            }
+
+            // Generate code
+            arguments.push(self.lower_expression(arg));
+        }
 
         ir::Expression::MethodCall(ir::MethodCall {
             method_id,
@@ -221,7 +263,19 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
     }
 
     fn lower_static_method_call(&mut self, method_id: MethodId, args: &[ast::Expression]) -> ir::Expression {
-        let arguments = args.iter().map(|a| self.lower_expression(a)).collect();
+        let mut arguments = Vec::new();
+
+        let params = self.query_engine.query_param_types(method_id);
+        for (arg, param_ty) in args.iter().zip(params) {
+            // Type check argument and param
+            let arg_ty = self.query_engine.query_expr_type(arg.label()).expect("Unreachable");
+            if arg_ty != param_ty {
+                panic!("Mismatched types between argument and parameter: {:?} and {:?}", arg_ty, param_ty);
+            }
+
+            // Generate code
+            arguments.push(self.lower_expression(arg));
+        }
 
         ir::Expression::MethodCall(ir::MethodCall {
             method_id,
