@@ -145,7 +145,7 @@ impl PrettyPrinter {
                 self.print_expression(f, &access.target)?;
                 write!(f, ".{}", access.field_name)?;
             }
-            Expression::Literal(ref l) => {
+            Expression::Literal(_, ref l) => {
                 l.fmt(f)?;
             }
             Expression::MethodCall(ref call) => {
@@ -162,7 +162,7 @@ impl PrettyPrinter {
             Expression::Identifier(ref s) => {
                 s.name.fmt(f)?;
             }
-            Expression::This => {
+            Expression::This(_) => {
                 "this".fmt(f)?;
             }
         }

@@ -151,7 +151,7 @@ pub enum Expression {
     /// Field access
     FieldAccess(FieldAccess),
     /// Literals
-    Literal(Literal),
+    Literal(Label, Literal),
     /// Method call (may be static)
     MethodCall(MethodCall),
     /// New (construct class and allocate it on the heap)
@@ -161,11 +161,12 @@ pub enum Expression {
     /// Represents a variable usage or a class name when calling a static method
     Identifier(Identifier),
     /// The `this` keyword
-    This,
+    This(Label),
 }
 
 #[derive(Debug)]
 pub struct BinaryOp {
+    pub label: Label,
     pub operator: BinaryOperator,
     pub left: Box<Expression>,
     pub right: Box<Expression>,
@@ -173,6 +174,7 @@ pub struct BinaryOp {
 
 #[derive(Debug)]
 pub struct FieldAccess {
+    pub label: Label,
     pub target: Box<Expression>,
     pub field_name: Identifier,
 }
@@ -201,6 +203,21 @@ pub struct Identifier {
 impl fmt::Display for Identifier {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.name.fmt(f)
+    }
+}
+
+impl Expression {
+    pub fn label(&self) -> Label {
+        match *self {
+            Expression::BinaryOp(BinaryOp { label, .. })
+            | Expression::FieldAccess(FieldAccess { label, .. })
+            | Expression::Literal(label, _)
+            | Expression::MethodCall(MethodCall { label, .. })
+            | Expression::New(New { label, .. })
+            | Expression::Identifier(Identifier { label, .. })
+            | Expression::This(label)
+            => label
+        }
     }
 }
 

@@ -57,7 +57,6 @@ impl LoweringContext {
 
         let entry_point = unimplemented!();
 
-
         ir::Program {
             entry_point,
             methods: mem::replace(&mut self.methods, Vec::new())
@@ -86,6 +85,7 @@ impl LoweringContext {
                     // In other words, each function needs a HashMap<Label, usize>
                     // ?
                     // If we know this, we can proceed
+                    // FIXME: check that assign.expr has the same type of the variable
                     let var_id = unimplemented!();
                     let value = self.lower_expression(&assign.expr);
                     lowered_body.push(ir::Statement::Assign(ir::Assign { var_id, value }));
@@ -95,6 +95,7 @@ impl LoweringContext {
                     lowered_body.push(ir::Statement::Expression(expr));
                 }
                 ast::Statement::Return(ref ret) => {
+                    // FIXME: check that the return value matches the function's return type
                     let expr = ret.expr.as_ref().map(|r| self.lower_expression(r));
                     lowered_body.push(ir::Statement::Return(expr));
                 }
@@ -116,6 +117,8 @@ impl LoweringContext {
     fn lower_expression(&mut self, e: &ast::Expression) -> ir::Expression {
         match *e {
             ast::Expression::BinaryOp(ref bin_op) => {
+                // FIXME: type check bin_op.left and bin_op.right
+                // We need to ensure they are integers!
                 let left = self.lower_expression(&bin_op.left);
                 let right = self.lower_expression(&bin_op.right);
                 ir::Expression::Intrinsic(Box::new(
@@ -128,7 +131,7 @@ impl LoweringContext {
                 let field_id = unimplemented!();
                 ir::Expression::FieldAccess(Box::new(ir::FieldAccess { target, field_id }))
             }
-            ast::Expression::Literal(ref l) => {
+            ast::Expression::Literal(_, ref l) => {
                 ir::Expression::Literal(match *l {
                     ast::Literal::Int(i) => ir::Literal::Int(i),
                     ast::Literal::String(ref s) => ir::Literal::String(s.clone()),
@@ -158,7 +161,7 @@ impl LoweringContext {
                 let var_id = unimplemented!();
                 ir::Expression::VarRead(var_id);
             }
-            ast::Expression::This => {
+            ast::Expression::This(_) => {
                 // When used from a method, the first parameter will always be this
                 ir::Expression::VarRead(0)
             }
