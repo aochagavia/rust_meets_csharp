@@ -86,7 +86,7 @@ impl<'a> Interpreter<'a> {
                 // Because of type checking, we know this is an object
                 match target {
                     // FIXME: we do nothing to deal with by ref vs by val
-                    rt::Value::Object(ref obj) => obj.fields[fa.field_id].clone(),
+                    rt::Value::Object(ref obj) => obj.fields[fa.field_id.0].clone(),
                     _ => unreachable!()
                 }
             }
@@ -99,19 +99,19 @@ impl<'a> Interpreter<'a> {
             MethodCall(ref mc) => {
                 // Obtain method based on method_id
                 // FIXME: do something better than cloning
-                let method = &self.program.methods[mc.method_id].clone();
+                let method = &self.program.methods[mc.method_id.0].clone();
                 let args = mc.arguments.iter().map(|expr| self.run_expression(expr)).collect();
 
                 // Note: for void methods we just return null. The return type will be ignored anyway.
                 self.run_method(method, args).unwrap_or(rt::Value::Null)
             }
             VarRead(var_id) => {
-                let addr = self.stack_addr(var_id);
+                let addr = self.stack_addr(var_id.0);
                 // FIXME: we do nothing to deal with by ref vs by val
                 self.stack[addr].clone()
             }
             NewObject(class_id) => {
-                let fields = vec![rt::Value::Null; self.classes[class_id].field_names.len()];
+                let fields = vec![rt::Value::Null; self.classes[class_id.0].field_names.len()];
                 rt::Value::Object(rt::Object { class_id, fields })
             }
         }
@@ -176,7 +176,7 @@ impl<'a> Interpreter<'a> {
             }
             rt::Value::Int(i) => print!("{}", i),
             rt::Value::Object(ref obj) => {
-                let class = &self.classes[obj.class_id];
+                let class = &self.classes[obj.class_id.0];
                 println!("{} {{", class.name);
                 // Note: superclass fields are included in this list
                 for (name, value) in class.field_names.iter().zip(obj.fields.iter()) {

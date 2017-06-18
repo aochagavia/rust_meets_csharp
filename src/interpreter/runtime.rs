@@ -1,3 +1,5 @@
+use analysis::ClassId;
+
 /// Internal representation of a value
 ///
 /// Note: this resembles `ast::Type`
@@ -13,6 +15,6 @@ pub enum Value {
 /// Internal representation of an object
 #[derive(Clone)]
 pub struct Object {
-    pub class_id: usize,
+    pub class_id: ClassId,
     pub fields: Vec<Value>,
 }

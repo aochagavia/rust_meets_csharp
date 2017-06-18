@@ -1,6 +1,7 @@
 //! Intermediate representation of our C# subset to be run by the interpreter
 
 use ast;
+use analysis::{ClassId, FieldId, MethodId, VarId};
 
 pub struct Program {
     pub entry_point: usize,
@@ -36,14 +37,14 @@ pub enum Expression {
     /// New desugars into new object + method call
     MethodCall(MethodCall),
     /// Identifier desugars into a VarRead or MethodCall (for static methods)
-    VarRead(usize), // Var id
-    NewObject(usize), // Class id
+    VarRead(VarId),
+    NewObject(ClassId),
 }
 
 #[derive(Clone)]
 pub struct FieldAccess {
     pub target: Expression,
-    pub field_id: usize
+    pub field_id: FieldId
 }
 
 #[derive(Clone)]
@@ -62,6 +63,6 @@ pub enum Intrinsic {
 
 #[derive(Clone)]
 pub struct MethodCall {
-    pub method_id: usize,
+    pub method_id: MethodId,
     pub arguments: Vec<Expression>
 }

@@ -1,6 +1,6 @@
 use std::mem;
 
-use analysis::ClassInfo;
+use analysis::{self, ClassInfo, MethodId, VarId, QueryEngine};
 use ast;
 use ir;
 
@@ -10,7 +10,8 @@ pub struct ProgramMetadata {
 
 pub struct LoweringContext {
     pub metadata: ProgramMetadata,
-    pub methods: Vec<ir::Method>
+    pub methods: Vec<ir::Method>,
+    pub query_engine: QueryEngine
 }
 
 pub fn lower(p: &ast::Program) -> (ir::Program, ProgramMetadata) {
@@ -117,18 +118,33 @@ impl LoweringContext {
     fn lower_expression(&mut self, e: &ast::Expression) -> ir::Expression {
         match *e {
             ast::Expression::BinaryOp(ref bin_op) => {
-                // FIXME: type check bin_op.left and bin_op.right
-                // We need to ensure they are integers!
+                // First, type check
+                // Safe to unwrap, since we know that expressions always have a type
+                let left_ty = self.query_engine.query_expr_type(bin_op.left.label()).unwrap().clone();
+                let right_ty = self.query_engine.query_expr_type(bin_op.right.label()).unwrap().clone();
+
+                match (left_ty, right_ty) {
+                    (analysis::Type::Int, analysis::Type::Int) => (),
+                    (l, r) => panic!("Invalid types in binary operator: {:?} and {:?}. Only int allowed!",
+                                     l, r)
+                }
+
+                // Generate code
                 let left = self.lower_expression(&bin_op.left);
                 let right = self.lower_expression(&bin_op.right);
                 ir::Expression::Intrinsic(Box::new(
                     ir::Intrinsic::IntOp(bin_op.operator, left, right)))
             }
             ast::Expression::FieldAccess(ref fa) => {
-                // FIXME: type information of the target required
-                // FIXME: mapping from field names to field_id in class
+                // Query type and field id
+                let target_ty = self.query_engine.query_expr_type(fa.target.label()).unwrap().clone();
+                let field_id = match target_ty {
+                    analysis::Type::Class(id) => self.query_engine.query_field(id, &fa.field_name.name),
+                    ty => panic!("Invalid type in field access target: {:?}", ty)
+                };
+
+                // Generate code
                 let target = self.lower_expression(&fa.target);
-                let field_id = unimplemented!();
                 ir::Expression::FieldAccess(Box::new(ir::FieldAccess { target, field_id }))
             }
             ast::Expression::Literal(_, ref l) => {
@@ -143,32 +159,59 @@ impl LoweringContext {
                 })
             }
             ast::Expression::MethodCall(ref mc) => {
-                // FIXME: method resolution
-                // FIXME: handle non-static method calls as well
-                let method_id = unimplemented!();
-                self.lower_static_method_call(method_id, &mc.args);
+                // Query type and method id
+                let target_ty = self.query_engine.query_expr_type(mc.target.label()).cloned();
+                match target_ty {
+                    Some(analysis::Type::Class(id)) => {
+                        // FIXME: error reporting when method doesn't exist
+                        // FIXME: check that the types match between arguments and parameters
+                        let method_id = self.query_engine.query_method(id, &mc.method_name);
+                        let expr = self.lower_expression(&mc.target);
+                        self.lower_method_call(expr, method_id, &mc.args)
+                    }
+                    Some(ty) => panic!("Invalid type in method call target: {:?}", ty),
+                    None => {
+                        // The target has no type, which means that it is not an expression
+                        // Therefore it should be a class name and this is a static method
+                        let class_name = match *mc.target {
+                            ast::Expression::Identifier(ref i) => &i.name,
+                            _ => unreachable!()
+                        };
+
+                        match self.query_engine.query_class(class_name) {
+                            Some(class_id) => {
+                                // FIXME: error reporting when method doesn't exist
+                                // FIXME: check that the types match between arguments and parameters
+                                let method_id = self.query_engine.query_method(class_id, &mc.method_name);
+                                self.lower_static_method_call(method_id, &mc.args)
+                            }
+                            None => panic!("Undeclared variable: {}", class_name)
+                        }
+                    }
+                }
             }
             ast::Expression::New(ref n) => {
-                // FIXME: class and method resolution
-                // The class name needs to be mapped to a class_id
-                // We need to obtain the method_id associated to the constructor
-                let class_id = unimplemented!();
-                let constructor_id = unimplemented!();
-                self.lower_method_call(ir::Expression::NewObject(class_id), constructor_id, &n.args);
+                // TODO: error reporting when class doesn't exist
+                let class_id = self.query_engine.query_class(&n.class_name).unwrap();
+                // Note that a class always has a constructor
+                let constructor_id = self.query_engine.query_constructor(class_id);
+
+                // FIXME: check that the types match between arguments and parameters
+
+                self.lower_method_call(ir::Expression::NewObject(class_id), constructor_id, &n.args)
             }
             ast::Expression::Identifier(ref i) => {
-                // FIXME: name resolution
-                let var_id = unimplemented!();
-                ir::Expression::VarRead(var_id);
+                let var_id = self.query_engine.query_var(i.label);
+                ir::Expression::VarRead(var_id)
             }
             ast::Expression::This(_) => {
                 // When used from a method, the first parameter will always be this
-                ir::Expression::VarRead(0)
+                ir::Expression::VarRead(VarId::this())
             }
         }
     }
 
-    fn lower_method_call(&mut self, target: ir::Expression, method_id: usize, args: &[ast::Expression]) -> ir::Expression {
+    fn lower_method_call(&mut self, target: ir::Expression, method_id: MethodId, args: &[ast::Expression]) -> ir::Expression {
         // Note: we need to pass the target expression as a first argument to the function
         let mut arguments = vec![target];
         arguments.extend(args.iter().map(|a| self.lower_expression(a)));
@@ -179,7 +222,7 @@ impl LoweringContext {
         })
     }
 
-    fn lower_static_method_call(&mut self, method_id: usize, args: &[ast::Expression]) -> ir::Expression {
+    fn lower_static_method_call(&mut self, method_id: MethodId, args: &[ast::Expression]) -> ir::Expression {
         let arguments = args.iter().map(|a| self.lower_expression(a)).collect();
 
         ir::Expression::MethodCall(ir::MethodCall {
