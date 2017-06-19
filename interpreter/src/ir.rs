@@ -1,7 +1,7 @@
 //! Intermediate representation of our C# subset to be run by the interpreter
 
-use ast;
-use analysis::{ClassId, FieldId, MethodId, VarId};
+use frontend::ast;
+use frontend::analysis::{ClassId, FieldId, MethodId, VarId};
 
 pub struct Program {
     pub methods: Vec<Method>

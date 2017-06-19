@@ -1,11 +1,6 @@
-use analysis::{self, ClassInfo, MethodId, VarId, QueryEngine};
-use ast;
+use frontend::analysis::{self, MethodId, VarId, QueryEngine};
+use frontend::ast;
 use ir;
-
-pub struct ProgramMetadata {
-    pub classes: Vec<ClassInfo>,
-    pub entry_point: MethodId
-}
 
 pub struct LoweringContext<'engine, 'a: 'engine> {
     pub query_engine: &'engine mut QueryEngine<'a>
@@ -55,7 +50,6 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
 
     fn lower_console_write_line(&mut self, _: analysis::IntrinsicInfo) -> ir::Method {
         // We assume that the arguments are correctly passed. This is enforced by the type checker
-        // This method corresponds to Console.WriteLine
         ir::Method {
             body: vec![
                 ir::Statement::Expression(
@@ -118,8 +112,7 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
     fn lower_expression(&mut self, e: &ast::Expression) -> ir::Expression {
         match *e {
             ast::Expression::BinaryOp(ref bin_op) => {
-                // First, type check
-                // Safe to unwrap, since we know that expressions always have a type
+                // Type check left and right
                 let left_ty = self.query_engine.query_expr_type(bin_op.left.label()).unwrap();
                 let right_ty = self.query_engine.query_expr_type(bin_op.right.label()).unwrap();
 
@@ -135,11 +128,15 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
                     ir::Intrinsic::IntOp(bin_op.operator, left, right)))
             }
             ast::Expression::FieldAccess(ref fa) => {
-                // Query type and field id
+                // Query target type
                 let target_ty = match self.query_engine.query_expr_type(fa.target.label()) {
                     Some(target_ty) => target_ty,
-                    None => panic!("Attempt to access field on undefined identifier: {:?}", fa.target)
+                    None => {
+                        // Note: in the future, support for static fields could be added here
+                        panic!("Attempt to access field on undefined identifier: {:?}", fa.target)
+                    }
                 };
+                // Query field id for the given type (if it exists)
                 let field_id = match self.query_engine.types().get(target_ty) {
                     analysis::Type::Class(id) => self.query_engine.query_field(id, &fa.field_name),
                     ty => panic!("Invalid type in field access target: {:?}", ty)
@@ -179,7 +176,7 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
                         }
                     }
                     None => {
-                        // The target has no type, which means that it is not an expression
+                        // The target has no type, which means that it is an undefined variable usage
                         // Therefore, assume it the target is a class name and the method is static
                         let class_name = match *mc.target {
                             ast::Expression::Identifier(ref i) => &i.name,
@@ -227,6 +224,7 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
 
     fn lower_assignment(&mut self, target: ast::Label, expr: &ast::Expression) -> ir::Statement {
         // Note: right now, the only lvalues are variables. No array indexing.
+        // Type check
         let var_id = self.query_engine.query_var_decl(target);
         let var_ty = self.query_engine.query_var_type(var_id);
         let expr_ty = self.query_engine.query_expr_type(expr.label()).unwrap();
@@ -234,6 +232,7 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
             panic!("Type mismatch in assignment: {:?} and {:?}", var_ty, expr_ty);
         }
 
+        // Generate code
         let value = self.lower_expression(expr);
         ir::Statement::Assign(ir::Assign { var_id, value })
     }
@@ -263,6 +262,7 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
     }
 
     fn lower_static_method_call(&mut self, method_id: MethodId, args: &[ast::Expression]) -> ir::Expression {
+        // Note: this duplicates code from lower_method_call
         let mut arguments = Vec::new();
 
         let params = self.query_engine.query_param_types(method_id);

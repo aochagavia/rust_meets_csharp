@@ -140,9 +140,8 @@ impl<'a> QueryEngine<'a> {
     }
 
     /// Returns the type of an expression, or `None` in case the label
-    /// corresponds to another kind of node. Note that static name variables
-    /// are not expressions. Therefore, a label pointing to a static variable
-    /// name will return `None`.
+    /// corresponds to another kind of node. Note: references to undefined
+    /// variables have no type.
     pub fn query_expr_type(&mut self, expr: Label) -> Option<TypeId> {
         unimplemented!()
     }

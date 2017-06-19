@@ -1,4 +1,4 @@
-use analysis::ClassId;
+use frontend::analysis::ClassId;
 
 /// Internal representation of a value
 ///

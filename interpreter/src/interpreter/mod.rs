@@ -6,7 +6,7 @@
 mod interpreter;
 mod runtime;
 
-use analysis::{self, MethodId};
+use frontend::analysis::{self, MethodId};
 
 pub fn run(program: &::ir::Program, entry_point: MethodId, classes: Vec<analysis::ClassInfo>) {
     self::interpreter::Interpreter {

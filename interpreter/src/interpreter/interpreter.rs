@@ -1,6 +1,6 @@
 use super::runtime as rt;
 
-use analysis::{ClassInfo, MethodId};
+use frontend::analysis::{ClassInfo, MethodId};
 use ir;
 
 // FIXME: this information is statically known... Right now, we leave it as-is,
@@ -128,7 +128,7 @@ impl<'a> Interpreter<'a> {
 
     fn run_intrinsic(&mut self, i: &ir::Intrinsic) -> rt::Value {
         use self::ir::Intrinsic::*;
-        use ast::BinaryOperator::*;
+        use frontend::ast::BinaryOperator::*;
         match *i {
             IntOp(ref op, ref e1, ref e2) => {
                 let e1 = self.run_expression(e1);
