@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use std::cell::Cell;
+use std::collections::HashMap;
 use std::fmt;
 
 use super::pretty::PrettyPrinter;
@@ -45,13 +46,18 @@ pub fn fresh_label() -> Label {
 // A program
 #[derive(Debug)]
 pub struct Program {
-    pub items: Vec<TopItem>
+    pub files: HashMap<String, File>
 }
 
 impl fmt::Display for Program {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         PrettyPrinter::new().print_program(f, self)
     }
+}
+
+#[derive(Debug)]
+pub struct File {
+    pub items: Vec<TopItem>
 }
 
 /// Top-level items

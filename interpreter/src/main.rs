@@ -9,13 +9,13 @@ use frontend::sample_programs;
 use lowering::LoweringContext;
 
 fn main() {
-    let hw = sample_programs::hello_world();
+    let mut hw = sample_programs::hello_world();
     println!("=== Hello world:");
     println!("{}", hw);
     println!("=== Compiling");
-    let mut query_engine = QueryEngine::new(&hw);
+    let mut query_engine = QueryEngine::new(&mut hw);
     let p = LoweringContext { query_engine: &mut query_engine }.lower_program();
-    let entry_point = query_engine.query_entry_point();
+    let entry_point = query_engine.preprocessor.entry_point.unwrap();
     println!("=== Running");
 
     // FIXME: replace Vec::new by a real Vec<ClassInfo>

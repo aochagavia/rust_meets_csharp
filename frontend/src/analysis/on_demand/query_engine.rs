@@ -1,66 +1,22 @@
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
+use analysis::{AstPreprocessor, ClassInfo, IntrinsicInfo, ClassId, FieldId, MethodId, TypeId, VarId};
 use ast::*;
-use super::{ClassInfo, IntrinsicInfo, ClassId, FieldId, MethodId, Type, TypeId, VarId};
+use super::type_map::TypeMap;
 
 pub struct QueryEngine<'a> {
-    program: &'a Program,
+    pub preprocessor: AstPreprocessor,
+    program: &'a mut Program,
     types: TypeMap
-}
-
-pub struct TypeMap {
-    types: Vec<Type>,
-    ids: HashMap<Type, usize>
-}
-
-impl TypeMap {
-    pub fn get(&self, id: TypeId) -> Type {
-        // Note: since we get a TypeId, it must be valid
-        // You could get this wrong by generating the id from a different QueryEngine,
-        // but even then it would just crash
-        *self.types.get(id.0).unwrap()
-    }
-
-    pub fn get_id(&mut self, ty: Type) -> TypeId {
-        match self.ids.entry(ty) {
-            Entry::Vacant(e) => {
-                // Intern the type
-                let fresh_id = self.types.len();
-                e.insert(fresh_id);
-                self.types.push(ty);
-                TypeId(fresh_id)
-            }
-            Entry::Occupied(e) => {
-                TypeId(*e.get())
-            }
-        }
-    }
-}
-
-impl Default for TypeMap {
-    fn default() -> TypeMap {
-        let types = vec![
-            Type::Int,
-            Type::String,
-            Type::Void
-        ];
-
-        let mut ids = HashMap::new();
-        for (id, ty) in types.iter().enumerate() {
-            *ids.get_mut(ty).unwrap() = id;
-        }
-
-        TypeMap { types, ids }
-    }
 }
 
 #[allow(unused_variables)]
 impl<'a> QueryEngine<'a> {
-    pub fn new(program: &'a Program) -> QueryEngine<'a> {
-        // FIXME: populate the tables with type information so intrinsics
-        // can be properly analyzed
-        QueryEngine { program, types: TypeMap::default() }
+    pub fn new(program: &'a mut Program) -> QueryEngine<'a> {
+        // FIXME: populate the tables with type information of intrinsic methods
+        let preprocessor = AstPreprocessor::new(program);
+        QueryEngine { program, types: TypeMap::default(), preprocessor }
     }
 
     pub fn types(&self) -> &TypeMap {
@@ -81,15 +37,8 @@ impl<'a> QueryEngine<'a> {
         vec![IntrinsicInfo]
     }
 
-    pub fn methods(&self) -> Vec<&'a MethodDecl> {
-        unimplemented!()
-    }
-
-    pub fn query_entry_point(&mut self) -> MethodId {
-        unimplemented!()
-    }
-
     pub fn query_class_info(&mut self, class_id: ClassId) -> Vec<ClassInfo> {
+        // Search in our class map. Should always be present
         unimplemented!()
     }
 
@@ -110,19 +59,26 @@ impl<'a> QueryEngine<'a> {
     }
 
     pub fn query_class(&mut self, class_name: &str) -> Option<ClassId> {
+        // Search in our class map. If not present, search through all class declarations.
         unimplemented!()
     }
 
-    pub fn query_var_decl(&mut self, identifier: Label) -> VarId {
+    pub fn query_var_decl(&mut self, var_use: Label) -> VarId {
         // The label may correspong to a VarAssign, VarDecl or VarRead
         unimplemented!()
     }
 
     pub fn query_var(&mut self, identifier: Label) -> VarId {
+        // The label may correspong to a VarAssign, VarDecl or VarRead
         unimplemented!()
     }
 
     pub fn query_var_type(&mut self, identifier: VarId) -> TypeId {
+        // The label corresponds to an identifier
+        unimplemented!()
+    }
+
+    pub fn query_parent_node(&mut self, node: Label) -> Option<Label> {
         unimplemented!()
     }
 

@@ -53,9 +53,14 @@ impl PrettyPrinter {
 
     // AST-related
     pub fn print_program(&mut self, f: &mut fmt::Formatter, p: &Program) -> fmt::Result {
-        for item in &p.items {
-            self.print_top_item(f, item)?;
-            writeln!(f)?;
+        for (path, file) in &p.files {
+            println!("-------");
+            println!("| File: {}", path);
+            println!("-------");
+            for item in &file.items {
+                self.print_top_item(f, item)?;
+                writeln!(f)?;
+            }
         }
 
         Ok(())

@@ -41,9 +41,12 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
         // i.e. int.Max
 
         // Generate code for user defined methods
+        // FIXME! Implement for loop below
+        unimplemented!();
+        /*
         for md in self.query_engine.methods() {
             methods.push(self.lower_method(md));
-        }
+        }*/
 
         ir::Program { methods }
     }

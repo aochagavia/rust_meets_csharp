@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use ast::*;
 
 fn console_class() -> TopItem {
@@ -51,10 +52,14 @@ fn program_class() -> TopItem {
 }
 
 pub fn hello_world() -> Program {
-    Program {
+    let file = File {
         items: vec![
             console_class(),
             program_class()
         ]
-    }
+    };
+
+    let mut files = HashMap::new();
+    files.insert("Main.cs".to_string(), file);
+    Program { files }
 }
