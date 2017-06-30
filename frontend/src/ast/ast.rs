@@ -4,9 +4,11 @@ use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt;
 
+use analysis::labels;
 use super::pretty::PrettyPrinter;
 
-pub type Label = u32;
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub struct Label(u32);
 
 #[derive(Debug)]
 pub enum Type {
@@ -40,7 +42,7 @@ pub fn fresh_label() -> Label {
         current
     });
 
-    label
+    Label(label)
 }
 
 // A program
@@ -230,7 +232,7 @@ impl fmt::Display for Identifier {
 }
 
 impl Expression {
-    pub fn label(&self) -> Label {
+    pub fn label(&self) -> labels::Expression {
         match *self {
             Expression::BinaryOp(BinaryOp { label, .. })
             | Expression::FieldAccess(FieldAccess { label, .. })
@@ -239,7 +241,7 @@ impl Expression {
             | Expression::New(New { label, .. })
             | Expression::Identifier(Identifier { label, .. })
             | Expression::This(label)
-            => label
+            => labels::Expression(label)
         }
     }
 }

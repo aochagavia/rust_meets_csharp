@@ -1,21 +1,16 @@
 use std::collections::HashMap;
 
-use analysis::{ClassId, MethodId, Node};
+use analysis::labels;
 use ast::*;
 
 // How would this work when updating a file?
-// Problem: MethodId, ClassId, VarId, FieldId are tightly coupled to the interpreter...
-// The interpreter assumes the ids are continuous!
-// We need to decouple them before it becomes possible to go further
 
 // FIXME: remove Default trait implementation
 #[derive(Default)]
 pub struct AstPreprocessor {
-    pub label_map: HashMap<Label, Node>,
+    pub node_map: HashMap<Label, Node>,
     pub parent_map: HashMap<Label, Label>,
-    pub method_map: HashMap<MethodId, Label>,
-    pub class_map: HashMap<ClassId, Label>,
-    pub entry_point: Option<MethodId>
+    pub entry_points: Vec<labels::MethodDecl>
 }
 
 impl AstPreprocessor {
@@ -34,23 +29,19 @@ impl AstPreprocessor {
     }
 
     pub fn update_file(&mut self, path: String, file: &File) {
-        // Also used when adding a file
+        // Build a map from labels to nodes
+        // Build a map from nodes to their parents
+        // Look for entry points
     }
 
-    pub fn methods(&self) -> Vec<MethodDecl> {
-        unimplemented!()
-    }
-
-    pub fn classes(&self) -> Vec<ClassDecl> {
-        unimplemented!()
-    }
-
-    pub fn query_entry_point(&mut self) -> MethodId {
-        // Go through all methods until we find one that has the following properties:
+    pub fn entry_point(&mut self) -> labels::MethodDecl {
+        // The entry point is a function with the following properties:
         // * Is static
         // * Is called Main
+        if self.entry_points.len() != 1 {
+            println!("Expected 1 entry point, found {}", self.entry_points.len());
+        }
 
-        // FIXME: what to do about multiple entry points? Should we query all methods?
-        unimplemented!()
+        self.entry_points[0]
     }
 }

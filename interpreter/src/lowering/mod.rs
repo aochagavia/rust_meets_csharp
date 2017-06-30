@@ -178,23 +178,8 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
                     ir::Intrinsic::IntOp(bin_op.operator, left, right)))
             }
             ast::Expression::FieldAccess(ref fa) => {
-                // Query target type
-                let target_ty = match self.query_engine.query_expr_type(fa.target.label()) {
-                    Some(target_ty) => target_ty,
-                    None => {
-                        // Note: in the future, support for static fields could be added here
-                        panic!("Attempt to access field on undefined identifier: {:?}", fa.target)
-                    }
-                };
-
-                // Query field for the given type (if it exists)
-                let field_label = match self.query_engine.types().get(target_ty) {
-                    analysis::Type::Class(label) => self.query_engine.query_field(label, &fa.field_name),
-                    ty => panic!("Invalid type in field access target: {:?}", ty)
-                };
-
-                // Generate code
                 let target = self.lower_expression(&fa.target);
+                let field_label = self.query_engine.query_field(fa.label.assert_as_var_use());
                 let field_id = self.fields[&field_label];
                 ir::Expression::FieldAccess(Box::new(ir::FieldAccess { target, field_id }))
             }
@@ -210,53 +195,20 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
                 })
             }
             ast::Expression::MethodCall(ref mc) => {
-                // Query type and method id
-                match self.query_engine.query_expr_type(mc.target.label()) {
-                    Some(target_ty) => {
-                        // Non-static method call
-                        match self.query_engine.types().get(target_ty) {
-                            analysis::Type::Class(id) => {
-                                match self.query_engine.query_method_decl(id, &mc.method_name) {
-                                    Some(method_id) => {
-                                        let expr = self.lower_expression(&mc.target);
-                                        self.lower_method_call(method_id, Some(expr), &mc.args)
-                                    }
-                                    None => panic!("Method doesn't exist: {}", mc.method_name)
-                                }
-                            }
-                            ty => panic!("Method call target is not an object: {:?}", ty),
-                        }
-                    }
-                    None => {
-                        // The target has no type, which means that it is an undefined variable usage
-                        // Therefore, assume it the target is a class name and the method is static
-                        let class_name = match *mc.target {
-                            ast::Expression::Identifier(ref i) => &i.name,
-                            _ => unreachable!()
-                        };
-
-                        match self.query_engine.query_class(class_name) {
-                            Some(class_id) => {
-                                match self.query_engine.query_method_decl(class_id, &mc.method_name) {
-                                    Some(label) => self.lower_method_call(label, None, &mc.args),
-                                    None => panic!("Method doesn't exist: {}", mc.method_name)
-                                }
-                            }
-                            None => panic!("Undeclared variable: {}", class_name)
-                        }
-                    }
-                }
+                let label = self.query_engine.query_method_decl(mc.label.assert_as_method_use());
+                let is_static = self.query_engine.nodes[&label.as_label()].MethodDecl().is_static;
+                let this = if is_static { None } else { Some(self.lower_expression(&mc.target)) };
+                self.lower_method_call(label, this, &mc.args)
             }
             ast::Expression::New(ref n) => {
-                match self.query_engine.query_class(&n.class_name) {
-                    Some(class_label) => {
-                        // Note that a class always has a constructor
-                        let constructor_id = self.query_engine.query_constructor(class_label);
-                        self.lower_method_call(constructor_id, Some(ir::Expression::NewObject(class_label)), &n.args)
-                    }
-                    None => panic!("Class doesn't exist: {}. How could it ever have a constructor?", n.class_name)
-                }
+                // This is just a method call to a non-static method.
+                // Note that `this` is a newly created object
+                let method_label = self.query_engine.query_method_decl(n.label.assert_as_method_use());
+                assert!(!self.query_engine.nodes[&method_label.as_label()].MethodDecl().is_static);
 
+                let class_label = self.query_engine.query_class_decl(n.label.assert_as_type_use());
+                let this = Some(ir::Expression::NewObject(class_label));
+                self.lower_method_call(method_label, this, &n.args)
             }
             ast::Expression::Identifier(ref i) => {
                 let var_label = self.query_engine.query_var_decl(i.label);
