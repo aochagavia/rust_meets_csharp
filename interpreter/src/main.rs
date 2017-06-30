@@ -13,11 +13,9 @@ fn main() {
     println!("=== Hello world:");
     println!("{}", hw);
     println!("=== Compiling");
-    let mut query_engine = QueryEngine::new(&mut hw);
-    let p = LoweringContext { query_engine: &mut query_engine }.lower_program();
-    let entry_point = query_engine.preprocessor.entry_point.unwrap();
+    let mut query_engine = QueryEngine::new(&hw);
+    let output = LoweringContext::new(&hw, &mut query_engine).lower_program();
     println!("=== Running");
 
-    // FIXME: replace Vec::new by a real Vec<ClassInfo>
-    interpreter::run(&p, entry_point, Vec::new());
+    interpreter::run(&output.program, output.classes);
 }

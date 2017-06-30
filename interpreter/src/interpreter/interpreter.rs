@@ -1,7 +1,9 @@
-use super::runtime as rt;
+use std::collections::HashMap;
 
-use frontend::analysis::{ClassInfo, MethodId};
-use ir;
+use frontend::ast::Label;
+use lowering::ClassInfo;
+use ir::{self, MethodId};
+use super::runtime as rt;
 
 // FIXME: this information is statically known... Right now, we leave it as-is,
 // because it makes lowering easier. In the future it would make sense to let the
@@ -15,16 +17,17 @@ enum Action {
 }
 
 pub struct Interpreter<'a> {
-    pub classes: Vec<ClassInfo>,
+    pub classes: HashMap<Label, ClassInfo>,
     pub stack: Vec<rt::Value>,
     pub stack_ptr: usize,
     pub program: &'a ir::Program
 }
 
 impl<'a> Interpreter<'a> {
-    pub fn run(&mut self, entry_point: MethodId) {
+    pub fn run(&mut self) {
         // FIXME: remove clone
-        let method = self.program.methods[entry_point.0].clone();
+        let ep = self.program.entry_point.0;
+        let method = self.program.methods[ep].clone();
         self.run_method(&method, vec![]);
     }
 
@@ -109,9 +112,9 @@ impl<'a> Interpreter<'a> {
                 // FIXME: we do nothing to deal with by ref vs by val
                 self.stack[addr].clone()
             }
-            NewObject(class_id) => {
-                let fields = vec![rt::Value::Null; self.classes[class_id.0].field_names.len()];
-                rt::Value::Object(rt::Object { class_id, fields })
+            NewObject(class) => {
+                let fields = vec![rt::Value::Null; self.classes[&class].field_names.len()];
+                rt::Value::Object(rt::Object { class, fields })
             }
         }
     }
@@ -175,7 +178,7 @@ impl<'a> Interpreter<'a> {
             }
             rt::Value::Int(i) => print!("{}", i),
             rt::Value::Object(ref obj) => {
-                let class = &self.classes[obj.class_id.0];
+                let class = &self.classes[&obj.class];
                 println!("{} {{", class.name);
                 // Note: superclass fields are included in this list
                 for (name, value) in class.field_names.iter().zip(obj.fields.iter()) {

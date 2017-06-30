@@ -1,4 +1,4 @@
-use frontend::analysis::ClassId;
+use frontend::ast::Label;
 
 /// Internal representation of a value
 ///
@@ -15,6 +15,6 @@ pub enum Value {
 /// Internal representation of an object
 #[derive(Clone)]
 pub struct Object {
-    pub class_id: ClassId,
+    pub class: Label,
     pub fields: Vec<Value>,
 }

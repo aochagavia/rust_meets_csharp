@@ -1,9 +1,25 @@
-use frontend::analysis::{self, MethodId, VarId, QueryEngine};
-use frontend::ast;
-use ir;
+use std::collections::HashMap;
 
-pub struct LoweringContext<'engine, 'a: 'engine> {
-    pub query_engine: &'engine mut QueryEngine<'a>
+use frontend::analysis::{self, QueryEngine};
+use frontend::ast::{self, Label};
+use ir::{self, FieldId, MethodId, VarId};
+
+pub struct ClassInfo {
+    pub name: String,
+    pub field_names: Vec<String>,
+}
+
+pub struct LoweringContext<'engine, 'ast: 'engine> {
+    pub ast: &'ast ast::Program,
+    pub query_engine: &'engine mut QueryEngine<'ast>,
+    pub methods: HashMap<Label, MethodId>,
+    pub fields: HashMap<Label, FieldId>,
+    pub classes: HashMap<Label, ClassInfo>
+}
+
+pub struct LoweringOutput {
+    pub program: ir::Program,
+    pub classes: HashMap<Label, ClassInfo>
 }
 
 /*
@@ -28,27 +44,72 @@ pub fn hello_world() -> ir::Program {
 }
 */
 
-impl<'a, 'engine> LoweringContext<'a, 'engine> {
-    pub fn lower_program(mut self) -> ir::Program {
+impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
+    pub fn new(ast: &'ast ast::Program, query_engine: &'engine mut QueryEngine<'ast>) -> LoweringContext<'ast, 'engine> {
+        LoweringContext {
+            ast,
+            query_engine,
+            methods: HashMap::new(),
+            fields: HashMap::new(),
+            classes: HashMap::new()
+        }
+    }
+
+    fn register_var_decl(&mut self, var_decl: Label) {
+
+    }
+
+    fn get_var_id(&mut self, var_use: Label) -> VarId {
+        unimplemented!()
+    }
+
+    pub fn lower_program(mut self) -> LoweringOutput {
         let mut methods = Vec::new();
 
         // Generate code for intrinsics
         for intrinsic in QueryEngine::intrinsics() {
+            let label = ast::fresh_label();
+            let method_id = MethodId(self.methods.len());
+            self.methods.insert(label, method_id);
             methods.push(self.lower_console_write_line(intrinsic));
         }
 
         // Note, in the future we could also generate code for prelude methods
         // i.e. int.Max
 
-        // Generate code for user defined methods
-        // FIXME! Implement for loop below
-        unimplemented!();
-        /*
-        for md in self.query_engine.methods() {
-            methods.push(self.lower_method(md));
-        }*/
+        // Assign an id to all methods and fields
+        for cd in self.ast.classes() {
+            let mut field_names = Vec::new();
+            for ci in &cd.items {
+                match *ci {
+                    ast::ClassItem::FieldDecl(ref fd) => {
+                        let field_id = field_names.len();
+                        field_names.push(fd.name.to_owned());
+                        self.fields.insert(fd.label, FieldId(field_id));
+                    }
+                    ast::ClassItem::MethodDecl(ref md) => {
+                        let method_id = MethodId(self.methods.len());
+                        self.methods.insert(md.label, method_id);
+                    }
+                }
+            }
+            self.classes.insert(cd.label, ClassInfo {
+                name: cd.name.to_owned(),
+                field_names
+            });
+        }
 
-        ir::Program { methods }
+        // Generate code
+        for md in self.ast.methods() {
+            methods.push(self.lower_method(md));
+        }
+
+        let ep = self.query_engine.query_entry_point();
+        let program = ir::Program { methods, entry_point: self.methods[&ep] };
+        LoweringOutput {
+            program,
+            classes: self.classes
+        }
     }
 
     fn lower_console_write_line(&mut self, _: analysis::IntrinsicInfo) -> ir::Method {
@@ -105,6 +166,7 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
             }
             ast::Statement::VarDecl(ref var_decl) => {
                 body.push(ir::Statement::VarDecl);
+                self.register_var_decl(var_decl.label);
                 if let Some(ref expr) = var_decl.expr {
                     body.push(self.lower_assignment(var_decl.label, expr));
                 }
@@ -139,14 +201,16 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
                         panic!("Attempt to access field on undefined identifier: {:?}", fa.target)
                     }
                 };
-                // Query field id for the given type (if it exists)
-                let field_id = match self.query_engine.types().get(target_ty) {
-                    analysis::Type::Class(id) => self.query_engine.query_field(id, &fa.field_name),
+
+                // Query field for the given type (if it exists)
+                let field_label = match self.query_engine.types().get(target_ty) {
+                    analysis::Type::Class(label) => self.query_engine.query_field(label, &fa.field_name),
                     ty => panic!("Invalid type in field access target: {:?}", ty)
                 };
 
                 // Generate code
                 let target = self.lower_expression(&fa.target);
+                let field_id = self.fields[&field_label];
                 ir::Expression::FieldAccess(Box::new(ir::FieldAccess { target, field_id }))
             }
             ast::Expression::Literal(_, ref l) => {
@@ -170,7 +234,7 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
                                 match self.query_engine.query_method(id, &mc.method_name) {
                                     Some(method_id) => {
                                         let expr = self.lower_expression(&mc.target);
-                                        self.lower_method_call(expr, method_id, &mc.args)
+                                        self.lower_method_call(method_id, Some(expr), &mc.args)
                                     }
                                     None => panic!("Method doesn't exist: {}", mc.method_name)
                                 }
@@ -189,7 +253,7 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
                         match self.query_engine.query_class(class_name) {
                             Some(class_id) => {
                                 match self.query_engine.query_method(class_id, &mc.method_name) {
-                                    Some(method_id) => self.lower_static_method_call(method_id, &mc.args),
+                                    Some(label) => self.lower_method_call(label, None, &mc.args),
                                     None => panic!("Method doesn't exist: {}", mc.method_name)
                                 }
                             }
@@ -200,18 +264,18 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
             }
             ast::Expression::New(ref n) => {
                 match self.query_engine.query_class(&n.class_name) {
-                    Some(class_id) => {
+                    Some(class_label) => {
                         // Note that a class always has a constructor
-                        let constructor_id = self.query_engine.query_constructor(class_id);
-                        self.lower_method_call(ir::Expression::NewObject(class_id), constructor_id, &n.args)
+                        let constructor_id = self.query_engine.query_constructor(class_label);
+                        self.lower_method_call(constructor_id, Some(ir::Expression::NewObject(class_label)), &n.args)
                     }
                     None => panic!("Class doesn't exist: {}. How could it ever have a constructor?", n.class_name)
                 }
 
             }
             ast::Expression::Identifier(ref i) => {
-                let var_id = self.query_engine.query_var(i.label);
-                ir::Expression::VarRead(var_id)
+                let var_label = self.query_engine.query_var(i.label);
+                ir::Expression::VarRead(self.get_var_id(var_label))
             }
             ast::Expression::This(label) => {
                 let parent = self.query_engine.query_parent_method(label);
@@ -228,8 +292,8 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
     fn lower_assignment(&mut self, target: ast::Label, expr: &ast::Expression) -> ir::Statement {
         // Note: right now, the only lvalues are variables. No array indexing.
         // Type check
-        let var_id = self.query_engine.query_var_decl(target);
-        let var_ty = self.query_engine.query_var_type(var_id);
+        let decl_label = self.query_engine.query_var_decl(target);
+        let var_ty = self.query_engine.query_var_type(decl_label);
         let expr_ty = self.query_engine.query_expr_type(expr.label()).unwrap();
         if var_ty != expr_ty {
             panic!("Type mismatch in assignment: {:?} and {:?}", var_ty, expr_ty);
@@ -237,16 +301,16 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
 
         // Generate code
         let value = self.lower_expression(expr);
+        let var_id = self.get_var_id(decl_label);
         ir::Statement::Assign(ir::Assign { var_id, value })
     }
 
-    fn lower_method_call(&mut self, target: ir::Expression, method_id: MethodId, args: &[ast::Expression]) -> ir::Expression {
+    fn lower_method_call(&mut self, method_label: Label, this: Option<ir::Expression>, args: &[ast::Expression]) -> ir::Expression {
         // Note: we need to pass the target expression as a first argument to the function
-        let mut arguments = vec![target];
+        let mut arguments: Vec<_> = this.into_iter().collect();
 
-        // Note, we skip the first param here since we already know it is type correct and
-        // we have already generated the code for its corresponding argument
-        let params = self.query_engine.query_param_types(method_id).into_iter().skip(1);
+        // Note, that we skip the `this` param here since we already know it is type correct
+        let params = self.query_engine.query_param_types(method_label).into_iter().skip(arguments.len());
         for (arg, param_ty) in args.iter().zip(params) {
             // Type check argument and param
             let arg_ty = self.query_engine.query_expr_type(arg.label()).expect("Unreachable");
@@ -259,29 +323,7 @@ impl<'a, 'engine> LoweringContext<'a, 'engine> {
         }
 
         ir::Expression::MethodCall(ir::MethodCall {
-            method_id,
-            arguments
-        })
-    }
-
-    fn lower_static_method_call(&mut self, method_id: MethodId, args: &[ast::Expression]) -> ir::Expression {
-        // Note: this duplicates code from lower_method_call
-        let mut arguments = Vec::new();
-
-        let params = self.query_engine.query_param_types(method_id);
-        for (arg, param_ty) in args.iter().zip(params) {
-            // Type check argument and param
-            let arg_ty = self.query_engine.query_expr_type(arg.label()).expect("Unreachable");
-            if arg_ty != param_ty {
-                panic!("Mismatched types between argument and parameter: {:?} and {:?}", arg_ty, param_ty);
-            }
-
-            // Generate code
-            arguments.push(self.lower_expression(arg));
-        }
-
-        ir::Expression::MethodCall(ir::MethodCall {
-            method_id,
+            method_id: self.methods[&method_label],
             arguments
         })
     }

@@ -6,13 +6,18 @@
 mod interpreter;
 mod runtime;
 
-use frontend::analysis::{self, MethodId};
+use std::collections::HashMap;
 
-pub fn run(program: &::ir::Program, entry_point: MethodId, classes: Vec<analysis::ClassInfo>) {
+use frontend::analysis;
+use frontend::ast::Label;
+use ir::MethodId;
+use lowering::ClassInfo;
+
+pub fn run(program: &::ir::Program, classes: HashMap<Label, ClassInfo>) {
     self::interpreter::Interpreter {
         classes,
         program,
         stack: Vec::new(),
         stack_ptr: 0
-    }.run(entry_point);
+    }.run();
 }

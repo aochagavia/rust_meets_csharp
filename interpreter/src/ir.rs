@@ -1,10 +1,25 @@
 //! Intermediate representation of our C# subset to be run by the interpreter
 
-use frontend::ast;
-use frontend::analysis::{ClassId, FieldId, MethodId, VarId};
+use frontend::ast::{BinaryOperator, Label};
+
+#[derive(Clone, Copy)]
+pub struct FieldId(pub(crate) usize);
+
+#[derive(Clone, Copy)]
+pub struct MethodId(pub(crate) usize);
+
+#[derive(Clone, Copy)]
+pub struct VarId(pub(crate) usize);
+
+impl VarId {
+    pub fn this() -> VarId {
+        VarId(0)
+    }
+}
 
 pub struct Program {
-    pub methods: Vec<Method>
+    pub methods: Vec<Method>,
+    pub entry_point: MethodId
 }
 
 #[derive(Clone)]
@@ -36,7 +51,7 @@ pub enum Expression {
     MethodCall(MethodCall),
     /// Identifier desugars into a VarRead or MethodCall (for static methods)
     VarRead(VarId),
-    NewObject(ClassId),
+    NewObject(Label),
 }
 
 #[derive(Clone)]
@@ -55,7 +70,7 @@ pub enum Literal {
 
 #[derive(Clone)]
 pub enum Intrinsic {
-    IntOp(ast::BinaryOperator, Expression, Expression),
+    IntOp(BinaryOperator, Expression, Expression),
     PrintLine(Expression),
 }
 

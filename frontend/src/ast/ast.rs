@@ -55,6 +55,20 @@ impl fmt::Display for Program {
     }
 }
 
+impl Program {
+    pub fn classes<'a>(&'a self) -> impl Iterator<Item=&'a ClassDecl> {
+        self.files.values()
+            .flat_map(|x| x.items.iter()) // Get a stream of TopItem
+            .map(|&TopItem::ClassDecl(ref cd)| cd)
+    }
+
+    pub fn methods<'a>(&'a self) -> impl Iterator<Item=&'a MethodDecl> {
+        self.classes()
+            .flat_map(|cd| cd.items.iter()) // Get a stream of ClassItem
+            .filter_map(|ci| match *ci { ClassItem::MethodDecl(ref md) => Some(md), _ => None }) // Get a stream of MethodDecl
+    }
+}
+
 #[derive(Debug)]
 pub struct File {
     pub items: Vec<TopItem>
