@@ -1,6 +1,7 @@
 //! Intermediate representation of our C# subset to be run by the interpreter
 
-use frontend::ast::{BinaryOperator, Label};
+use frontend::analysis::labels;
+use frontend::ast::BinaryOperator;
 
 #[derive(Clone, Copy)]
 pub struct FieldId(pub(crate) usize);
@@ -51,7 +52,7 @@ pub enum Expression {
     MethodCall(MethodCall),
     /// Identifier desugars into a VarRead or MethodCall (for static methods)
     VarRead(VarId),
-    NewObject(Label),
+    NewObject(labels::ClassDecl),
 }
 
 #[derive(Clone)]

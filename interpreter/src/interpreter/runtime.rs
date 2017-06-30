@@ -1,4 +1,4 @@
-use frontend::ast::Label;
+use frontend::analysis::labels;
 
 /// Internal representation of a value
 ///
@@ -15,6 +15,6 @@ pub enum Value {
 /// Internal representation of an object
 #[derive(Clone)]
 pub struct Object {
-    pub class: Label,
+    pub class: labels::ClassDecl,
     pub fields: Vec<Value>,
 }

@@ -8,12 +8,10 @@ mod runtime;
 
 use std::collections::HashMap;
 
-use frontend::analysis;
-use frontend::ast::Label;
-use ir::MethodId;
+use frontend::analysis::labels;
 use lowering::ClassInfo;
 
-pub fn run(program: &::ir::Program, classes: HashMap<Label, ClassInfo>) {
+pub fn run(program: &::ir::Program, classes: HashMap<labels::ClassDecl, ClassInfo>) {
     self::interpreter::Interpreter {
         classes,
         program,

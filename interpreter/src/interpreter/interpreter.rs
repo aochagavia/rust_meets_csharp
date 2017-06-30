@@ -1,23 +1,17 @@
 use std::collections::HashMap;
 
-use frontend::ast::Label;
+use frontend::analysis::labels;
 use lowering::ClassInfo;
-use ir::{self, MethodId};
+use ir;
 use super::runtime as rt;
 
-// FIXME: this information is statically known... Right now, we leave it as-is,
-// because it makes lowering easier. In the future it would make sense to let the
-// IR be a graph, similar to Rust's MIR. We could split the code into basic blocks,
-// where the statements are executed in sequential order and at the end jump to another
-// basic block. This will become especially interesting when we introduce control flow
-// stuff such as if-then-else statements and loops.
-enum Action {
-    NextStatement,
+enum NextAction {
+    Continue,
     Return(Option<rt::Value>)
 }
 
 pub struct Interpreter<'a> {
-    pub classes: HashMap<Label, ClassInfo>,
+    pub classes: HashMap<labels::ClassDecl, ClassInfo>,
     pub stack: Vec<rt::Value>,
     pub stack_ptr: usize,
     pub program: &'a ir::Program
@@ -45,7 +39,7 @@ impl<'a> Interpreter<'a> {
         // Run the statements
         let mut ret = None;
         for s in &m.body {
-            if let Action::Return(val) = self.run_statement(s) {
+            if let NextAction::Return(val) = self.run_statement(s) {
                 ret = val;
                 break;
             }
@@ -58,24 +52,24 @@ impl<'a> Interpreter<'a> {
         ret
     }
 
-    fn run_statement(&mut self, s: &ir::Statement) -> Action {
+    fn run_statement(&mut self, s: &ir::Statement) -> NextAction {
         use self::ir::Statement::*;
         match *s {
             Assign(ref assign) => {
                 let addr = self.stack_addr(assign.var_id.0);
                 self.stack[addr] = self.run_expression(&assign.value);
-                Action::NextStatement
+                NextAction::Continue
             }
             Expression(ref expr) => {
                 self.run_expression(expr);
-                Action::NextStatement
+                NextAction::Continue
             }
             Return(ref val) => {
-                Action::Return(val.as_ref().map(|v| self.run_expression(v)))
+                NextAction::Return(val.as_ref().map(|v| self.run_expression(v)))
             }
             VarDecl => {
                 self.stack.push(rt::Value::Int(::std::i64::MAX));
-                Action::NextStatement
+                NextAction::Continue
             }
         }
     }

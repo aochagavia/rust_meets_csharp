@@ -1,8 +1,12 @@
+mod var_tracker;
+
 use std::collections::HashMap;
 
 use frontend::analysis::{self, QueryEngine};
-use frontend::ast::{self, Label};
+use frontend::analysis::labels;
+use frontend::ast;
 use ir::{self, FieldId, MethodId, VarId};
+use self::var_tracker::VarTracker;
 
 pub struct ClassInfo {
     pub name: String,
@@ -12,37 +16,16 @@ pub struct ClassInfo {
 pub struct LoweringContext<'engine, 'ast: 'engine> {
     pub ast: &'ast ast::Program,
     pub query_engine: &'engine mut QueryEngine<'ast>,
-    pub methods: HashMap<Label, MethodId>,
-    pub fields: HashMap<Label, FieldId>,
-    pub classes: HashMap<Label, ClassInfo>
+    methods: HashMap<labels::MethodDecl, MethodId>,
+    fields: HashMap<labels::VarDecl, FieldId>,
+    classes: HashMap<labels::ClassDecl, ClassInfo>,
+    var_tracker: VarTracker
 }
 
 pub struct LoweringOutput {
     pub program: ir::Program,
-    pub classes: HashMap<Label, ClassInfo>
+    pub classes: HashMap<labels::ClassDecl, ClassInfo>
 }
-
-/*
-pub fn hello_world() -> ir::Program {
-    let methods = vec![
-        ir::Method {
-            body: vec![
-                ir::Statement::Expression(
-                    ir::Expression::Intrinsic(
-                        Box::new(
-                            ir::Intrinsic::PrintLine(
-                                ir::Expression::Literal(
-                                    ir::Literal::String("Hello world!".to_string())
-                                )
-                            )
-                        )
-                    )
-                )
-            ]
-        }
-    ];
-}
-*/
 
 impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
     pub fn new(ast: &'ast ast::Program, query_engine: &'engine mut QueryEngine<'ast>) -> LoweringContext<'ast, 'engine> {
@@ -51,16 +34,9 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
             query_engine,
             methods: HashMap::new(),
             fields: HashMap::new(),
-            classes: HashMap::new()
+            classes: HashMap::new(),
+            var_tracker: VarTracker::default()
         }
-    }
-
-    fn register_var_decl(&mut self, var_decl: Label) {
-
-    }
-
-    fn get_var_id(&mut self, var_use: Label) -> VarId {
-        unimplemented!()
     }
 
     pub fn lower_program(mut self) -> LoweringOutput {
@@ -68,9 +44,8 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
 
         // Generate code for intrinsics
         for intrinsic in QueryEngine::intrinsics() {
-            let label = ast::fresh_label();
             let method_id = MethodId(self.methods.len());
-            self.methods.insert(label, method_id);
+            self.methods.insert(intrinsic.label, method_id);
             methods.push(self.lower_console_write_line(intrinsic));
         }
 
@@ -85,15 +60,15 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
                     ast::ClassItem::FieldDecl(ref fd) => {
                         let field_id = field_names.len();
                         field_names.push(fd.name.to_owned());
-                        self.fields.insert(fd.label, FieldId(field_id));
+                        self.fields.insert(fd.label.assert_as_var_decl(), FieldId(field_id));
                     }
                     ast::ClassItem::MethodDecl(ref md) => {
                         let method_id = MethodId(self.methods.len());
-                        self.methods.insert(md.label, method_id);
+                        self.methods.insert(md.label.assert_as_method_decl(), method_id);
                     }
                 }
             }
-            self.classes.insert(cd.label, ClassInfo {
+            self.classes.insert(cd.label.assert_as_class_decl(), ClassInfo {
                 name: cd.name.to_owned(),
                 field_names
             });
@@ -132,6 +107,13 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
     }
 
     fn lower_method(&mut self, m: &ast::MethodDecl) -> ir::Method {
+        self.var_tracker.reset();
+
+        // Track declared parameters
+        for param in &m.params {
+            self.var_tracker.var_decl(param.label.assert_as_var_decl());
+        }
+
         let mut body = Vec::new();
         for stmt in &m.body {
             self.lower_statement(stmt, &mut body);
@@ -165,8 +147,11 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
                 body.push(ir::Statement::Return(expr));
             }
             ast::Statement::VarDecl(ref var_decl) => {
+                // Track declared variables
+                self.var_tracker.var_decl(var_decl.label.assert_as_var_decl());
+
+                // Generate code
                 body.push(ir::Statement::VarDecl);
-                self.register_var_decl(var_decl.label);
                 if let Some(ref expr) = var_decl.expr {
                     body.push(self.lower_assignment(var_decl.label, expr));
                 }
@@ -231,7 +216,7 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
                         // Non-static method call
                         match self.query_engine.types().get(target_ty) {
                             analysis::Type::Class(id) => {
-                                match self.query_engine.query_method(id, &mc.method_name) {
+                                match self.query_engine.query_method_decl(id, &mc.method_name) {
                                     Some(method_id) => {
                                         let expr = self.lower_expression(&mc.target);
                                         self.lower_method_call(method_id, Some(expr), &mc.args)
@@ -252,7 +237,7 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
 
                         match self.query_engine.query_class(class_name) {
                             Some(class_id) => {
-                                match self.query_engine.query_method(class_id, &mc.method_name) {
+                                match self.query_engine.query_method_decl(class_id, &mc.method_name) {
                                     Some(label) => self.lower_method_call(label, None, &mc.args),
                                     None => panic!("Method doesn't exist: {}", mc.method_name)
                                 }
@@ -274,8 +259,8 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
 
             }
             ast::Expression::Identifier(ref i) => {
-                let var_label = self.query_engine.query_var(i.label);
-                ir::Expression::VarRead(self.get_var_id(var_label))
+                let var_label = self.query_engine.query_var_decl(i.label);
+                ir::Expression::VarRead(self.var_tracker.get_var_id(var_label))
             }
             ast::Expression::This(label) => {
                 let parent = self.query_engine.query_parent_method(label);
@@ -301,11 +286,11 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
 
         // Generate code
         let value = self.lower_expression(expr);
-        let var_id = self.get_var_id(decl_label);
+        let var_id = self.var_tracker.get_var_id(decl_label);
         ir::Statement::Assign(ir::Assign { var_id, value })
     }
 
-    fn lower_method_call(&mut self, method_label: Label, this: Option<ir::Expression>, args: &[ast::Expression]) -> ir::Expression {
+    fn lower_method_call(&mut self, method_label: labels::MethodDecl, this: Option<ir::Expression>, args: &[ast::Expression]) -> ir::Expression {
         // Note: we need to pass the target expression as a first argument to the function
         let mut arguments: Vec<_> = this.into_iter().collect();
 
