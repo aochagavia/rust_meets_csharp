@@ -196,7 +196,7 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
             }
             ast::Expression::MethodCall(ref mc) => {
                 let label = self.query_engine.query_method_decl(mc.label.assert_as_method_use());
-                let is_static = self.query_engine.nodes[&label.as_label()].MethodDecl().is_static;
+                let is_static = self.query_engine.nodes[&label.as_label()].downcast::<ast::MethodDecl>().is_static;
                 let this = if is_static { None } else { Some(self.lower_expression(&mc.target)) };
                 self.lower_method_call(label, this, &mc.args)
             }
@@ -204,7 +204,7 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
                 // This is just a method call to a non-static method.
                 // Note that `this` is a newly created object
                 let method_label = self.query_engine.query_method_decl(n.label.assert_as_method_use());
-                assert!(!self.query_engine.nodes[&method_label.as_label()].MethodDecl().is_static);
+                assert!(!self.query_engine.nodes[&method_label.as_label()].downcast::<ast::MethodDecl>().is_static);
 
                 let class_label = self.query_engine.query_class_decl(n.label.assert_as_type_use());
                 let this = Some(ir::Expression::NewObject(class_label));

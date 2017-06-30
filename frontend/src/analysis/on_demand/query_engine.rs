@@ -54,12 +54,12 @@ impl<'a> QueryEngine<'a> {
     }
 
     pub fn query_param_types(&mut self, method: labels::MethodDecl) -> Vec<TypeId> {
-        let md = self.nodes[&method.as_label()].MethodDecl();
+        let md: &MethodDecl = self.nodes[&method.as_label()].downcast();
         unimplemented!()
     }
 
     pub fn query_constructor(&mut self, class: labels::ClassDecl) -> labels::MethodDecl {
-        let cd = self.nodes[&class.as_label()].ClassDecl();
+        let cd: &ClassDecl = self.nodes[&class.as_label()].downcast();
         unimplemented!()
     }
 
