@@ -22,8 +22,15 @@ macro_rules! nodes {
 }
 
 nodes! {
+    // Top level items
     ClassDecl,
-    MethodDecl
+    // Class items
+    FieldDecl,
+    MethodDecl,
+    // Expressions
+    FieldAccess,
+    MethodCall,
+    Identifier
 }
 
 impl Node {

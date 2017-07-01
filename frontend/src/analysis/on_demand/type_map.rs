@@ -3,7 +3,7 @@ use analysis::{Type, TypeId};
 
 pub struct TypeMap {
     types: Vec<Type>,
-    ids: HashMap<Type, usize>
+    ids: HashMap<Type, usize>,
 }
 
 impl TypeMap {

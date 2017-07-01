@@ -13,20 +13,16 @@ pub struct Label(u32);
 #[derive(Debug)]
 pub enum Type {
     Array(Box<Type>),
-    Int,
-    String,
+    Custom(String),
     Void,
-    Custom(String)
 }
 
 impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             &Type::Array(ref ty) => write!(f, "{}[]", ty),
-            &Type::Int => write!(f, "int"),
-            &Type::String => write!(f, "string"),
+            &Type::Custom(ref s) => write!(f, "{}", s),
             &Type::Void => write!(f, "void"),
-            &Type::Custom(ref s) => write!(f, "{}", s)
         }
     }
 }
@@ -91,6 +87,22 @@ pub struct ClassDecl {
     pub items: Vec<ClassItem>
 }
 
+impl ClassDecl {
+    pub fn find_field(&self, name: &str) -> Label {
+        self.items.iter()
+                  .filter_map(|i| i.field_decl())
+                  .find(|fd| &fd.name == name)
+                  .unwrap().label
+    }
+
+    pub fn find_method(&self, is_static: bool, name: &str) -> Label {
+        self.items.iter()
+                  .filter_map(|i| i.method_decl())
+                  .find(|md| &md.name == name && md.is_static == is_static)
+                  .unwrap().label
+    }
+}
+
 /// Class items
 #[derive(Debug)]
 pub enum ClassItem {
@@ -104,6 +116,13 @@ impl ClassItem {
     pub fn method_decl(&self) -> Option<&MethodDecl> {
         match *self {
             ClassItem::MethodDecl(ref m) => Some(m),
+            _ => None
+        }
+    }
+
+    pub fn field_decl(&self) -> Option<&FieldDecl> {
+        match *self {
+            ClassItem::FieldDecl(ref f) => Some(f),
             _ => None
         }
     }
