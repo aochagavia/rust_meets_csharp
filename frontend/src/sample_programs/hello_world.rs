@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use ast::*;
 
 fn console_class() -> TopItem {
@@ -17,7 +16,6 @@ fn console_class() -> TopItem {
     TopItem::ClassDecl(ClassDecl {
         label: fresh_label(),
         name: "Console".to_string(),
-        superclass: None,
         items: vec![
             create_method("Write"),
             create_method("WriteLine"),
@@ -46,20 +44,15 @@ fn program_class() -> TopItem {
     TopItem::ClassDecl(ClassDecl {
         label: fresh_label(),
         name: "Program".to_string(),
-        superclass: None,
         items: vec![main_method]
     })
 }
 
 pub fn hello_world() -> Program {
-    let file = File {
+    Program {
         items: vec![
             console_class(),
             program_class()
         ]
-    };
-
-    let mut files = HashMap::new();
-    files.insert("Main.cs".to_string(), file);
-    Program { files }
+    }
 }

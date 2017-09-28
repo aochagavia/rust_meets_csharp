@@ -5,6 +5,7 @@ mod ir;
 mod lowering;
 
 use frontend::analysis::QueryEngine;
+use frontend::ast::{ClassDecl, TopItem};
 use frontend::sample_programs;
 use lowering::LoweringContext;
 
@@ -12,12 +13,23 @@ fn main() {
     let hw = sample_programs::hello_world();
     println!("=== Hello world:");
     println!("{}", hw);
-    println!("=== Compiling");
+    //println!("=== Compiling");
     let mut query_engine = QueryEngine::new(&hw);
+
+    println!("Query class decl for `Console`:");
+    let class_label = query_engine.query_class_decl("Console");
+    let class_decl: &ClassDecl = query_engine.nodes[&class_label.as_label()].downcast();
+    println!("{}", TopItem::ClassDecl(class_decl.clone()));
+
+    println!("Query entry point for the program: {}", query_engine.entry_point().name);
+
+    /*
+
     let output = LoweringContext::new(&hw, &mut query_engine).lower_program();
     println!("=== Running");
 
     interpreter::run(&output.program, output.classes);
+    */
 }
 
 #[cfg(test)]

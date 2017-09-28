@@ -5,10 +5,6 @@ mod preprocess;
 pub use self::on_demand::query_engine::QueryEngine;
 pub use self::preprocess::ast_preprocessor::AstPreprocessor;
 
-pub struct IntrinsicInfo {
-    pub label: self::labels::MethodDecl
-}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct TypeId(usize);
 

@@ -1,47 +1,43 @@
 use std::collections::HashMap;
 
-use analysis::labels;
+//use analysis::labels;
 use ast::*;
+use ast::visitor::Visitor;
 
-// How would this work when updating a file?
+use super::visitor::PreprocessVisitor;
 
-// FIXME: remove Default trait implementation
-#[derive(Default)]
-pub struct AstPreprocessor {
-    pub node_map: HashMap<Label, Node>,
-    pub parent_map: HashMap<Label, Label>,
-    pub entry_points: Vec<labels::MethodDecl>
+pub struct AstData<'a> {
+    pub nodes: HashMap<Label, Node<'a>>,
+    pub classes_by_name: HashMap<&'a str, &'a ClassDecl>,
+    pub entry_point: &'a MethodDecl
 }
 
+pub struct AstPreprocessor;
 impl AstPreprocessor {
-    pub fn new(p: &Program) -> AstPreprocessor {
-        let mut basic = AstPreprocessor::default();
+    pub fn preprocess(p: &Program) -> AstData {
+        let mut visitor = PreprocessVisitor::default();
+        visitor.visit_ast(&p.items);
 
-        for (path, file) in &p.files {
-            basic.update_file(path.to_string(), file);
+        if visitor.errors.len() > 0 {
+            println!("Errors while preprocessing:");
+            for err in &visitor.errors {
+                println!("{:?}", err);
+            }
+
+            panic!()
         }
 
-        basic
-    }
+        let ep = match visitor.entry_point {
+            Some(e) => e,
+            None => {
+                panic!("No entry point found")
+            }
+        };
 
-    pub fn remove_file(&mut self, path: String) {
-
-    }
-
-    pub fn update_file(&mut self, path: String, file: &File) {
-        // Build a map from labels to nodes
-        // Build a map from nodes to their parents
-        // Look for entry points
-    }
-
-    pub fn entry_point(&mut self) -> labels::MethodDecl {
-        // The entry point is a function with the following properties:
-        // * Is static
-        // * Is called Main
-        if self.entry_points.len() != 1 {
-            println!("Expected 1 entry point, found {}", self.entry_points.len());
+        AstData {
+            nodes: visitor.nodes,
+            classes_by_name: visitor.classes_by_name,
+            entry_point: ep
         }
-
-        self.entry_points[0]
     }
 }

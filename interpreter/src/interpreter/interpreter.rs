@@ -107,6 +107,7 @@ impl<'a> Interpreter<'a> {
                 self.stack[addr].clone()
             }
             NewObject(class) => {
+                // Note: constructors don't exist in our implementation
                 let fields = vec![rt::Value::Null; self.classes[&class].field_names.len()];
                 rt::Value::Object(rt::Object { class, fields })
             }
@@ -174,7 +175,6 @@ impl<'a> Interpreter<'a> {
             rt::Value::Object(ref obj) => {
                 let class = &self.classes[&obj.class];
                 println!("{} {{", class.name);
-                // Note: superclass fields are included in this list
                 for (name, value) in class.field_names.iter().zip(obj.fields.iter()) {
                     print!("    {}: ", name);
                     self.print_value(value);

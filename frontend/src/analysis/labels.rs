@@ -59,4 +59,4 @@ macro_rules! impl_as_label {
     }
 }
 
-impl_as_label!(ClassDecl, Expression, MethodDecl, MethodUse, VarDecl, VarUse);
+impl_as_label!(ClassDecl, Expression, MethodDecl, MethodUse, TypeUse, VarDecl, VarUse);

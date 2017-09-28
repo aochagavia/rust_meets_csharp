@@ -1,48 +1,46 @@
 use std::collections::HashMap;
 
-use analysis::{labels, AstPreprocessor, IntrinsicInfo, TypeId};
+use analysis::{labels, AstPreprocessor, TypeId};
 use ast::*;
 use super::type_map::TypeMap;
 
 pub struct QueryEngine<'a> {
-    pub preprocessor: AstPreprocessor,
-    pub nodes: HashMap<Label, Node>,
-    program: &'a Program,
-    types: TypeMap,
-    classes: HashMap<TypeId, labels::ClassDecl>,
+    pub nodes: HashMap<Label, Node<'a>>,
+    //program: &'a Program,
+    //types: TypeMap,
+    classes: HashMap<TypeId, &'a ClassDecl>,
+    classes_by_name: HashMap<&'a str, &'a ClassDecl>,
+    entry_point: &'a MethodDecl
 }
 
 #[allow(unused_variables)]
 impl<'a> QueryEngine<'a> {
     pub fn new(program: &'a Program) -> QueryEngine<'a> {
-        // FIXME: populate the tables with type information of intrinsic methods
-        let preprocessor = AstPreprocessor::new(program);
+        // FIXME: manually add type information for Console.WriteLine
+        let ast_data = AstPreprocessor::preprocess(program);
+
         QueryEngine {
-            program,
-            types: TypeMap::default(),
-            preprocessor,
-            nodes: HashMap::new(),
-            classes: HashMap::new()
+            //program,
+            //types: TypeMap::default(),
+            nodes: ast_data.nodes,
+            classes: HashMap::new(),
+            classes_by_name: ast_data.classes_by_name,
+            entry_point: ast_data.entry_point
         }
     }
 
+    pub fn entry_point(&self) -> &MethodDecl {
+        &self.entry_point
+    }
+
     pub fn types(&self) -> &TypeMap {
-        &self.types
+        unimplemented!()
+        //&self.types
     }
 
     pub fn types_mut(&mut self) -> &mut TypeMap {
-        &mut self.types
-    }
-
-    pub fn intrinsics() -> Vec<IntrinsicInfo> {
-        // Additional intrinsics that may be useful:
-        // * Console.Write
-        // * Console.ReadLine
-        vec![IntrinsicInfo { label: labels::MethodDecl(fresh_label()) }]
-    }
-
-    pub fn query_entry_point(&mut self) -> labels::MethodDecl {
-        self.preprocessor.entry_point()
+        unimplemented!()
+        //&mut self.types
     }
 
     pub fn query_field(&mut self, var_use: labels::VarUse) -> labels::VarDecl {
@@ -50,8 +48,7 @@ impl<'a> QueryEngine<'a> {
         let target_label = self.nodes[&var_use.as_label()].downcast::<FieldAccess>().target.label();
         // Note: a field target should always be an expression and have a type
         let target_ty = self.query_expr_type(target_label).unwrap();
-        let target_decl_label = self.classes[&target_ty];
-        let target_decl: &ClassDecl = self.nodes[&target_decl_label.as_label()].downcast();
+        let target_decl = self.classes[&target_ty];
 
         // Look up the field
         target_decl.find_field(&self.nodes[&var_use.as_label()].downcast::<FieldAccess>().field_name)
@@ -66,18 +63,18 @@ impl<'a> QueryEngine<'a> {
             Some(target_ty) => {
                 // Non-static method
                 is_static = false;
-                self.classes[&target_ty]
+                self.classes[&target_ty].label
             }
             None => {
                 // Static method
-                // The target should be an Expression::Identifier
+                // The target should be an Expression::Identifier, naming the type
                 is_static = true;
                 let class_name = self.nodes[&target_label.as_label()].downcast::<Identifier>().name.to_owned();
-                self.query_class_decl_by_name(&class_name)
+                self.query_class_decl(&class_name).as_label()
             }
         };
 
-        let target_decl: &ClassDecl = self.nodes[&target_decl_label.as_label()].downcast();
+        let target_decl: &ClassDecl = self.nodes[&target_decl_label].downcast();
 
         // Look up the field
         target_decl.find_method(is_static, &self.nodes[&method_use.as_label()].downcast::<MethodCall>().method_name)
@@ -90,18 +87,8 @@ impl<'a> QueryEngine<'a> {
         //md.params.iter().map(|p| self.types.get_id(p.ty)).collect()
     }
 
-    pub fn query_constructor(&mut self, class: labels::ClassDecl) -> labels::MethodDecl {
-        let cd: &ClassDecl = self.nodes[&class.as_label()].downcast();
-        unimplemented!()
-    }
-
-    pub fn query_class_decl(&mut self, class_use: labels::TypeUse) -> labels::ClassDecl {
-        // Search in our class map. If not present, search through all class declarations
-        unimplemented!()
-    }
-
-    pub fn query_class_decl_by_name(&mut self, name: &str) -> labels::ClassDecl {
-        unimplemented!()
+    pub fn query_class_decl(&mut self, name: &str) -> labels::ClassDecl {
+        self.classes_by_name.get(name).expect("No class decl exist for given class name").label.assert_as_class_decl()
     }
 
     pub fn query_var_decl(&mut self, var_use: Label) -> labels::VarDecl {

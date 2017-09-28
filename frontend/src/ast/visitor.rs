@@ -2,7 +2,7 @@ use ast::*;
 
 #[allow(unused_variables)]
 pub trait Visitor<'a>: Sized {
-    fn visit_program(&mut self, program: &'a Program) {
+    fn visit_ast(&mut self, program: &'a [TopItem]) {
         walk_program(self, program)
     }
 
@@ -75,8 +75,8 @@ pub trait Visitor<'a>: Sized {
     }
 }
 
-pub fn walk_program<'a, V: Visitor<'a>>(visitor: &mut V, program: &'a Program) {
-    for item in &program.items {
+pub fn walk_program<'a, V: Visitor<'a>>(visitor: &mut V, program: &'a [TopItem]) {
+    for item in program {
         let &TopItem::ClassDecl(ref cd) = item;
         visitor.visit_class_decl(cd);
     }
@@ -123,7 +123,6 @@ pub fn walk_statement<'a, V: Visitor<'a>>(visitor: &mut V, statement: &'a Statem
 }
 
 pub fn walk_assign<'a, V: Visitor<'a>>(visitor: &mut V, assign: &'a Assign) {
-    visitor.visit_identifier(&assign.var_name);
     visitor.visit_expression(&assign.expr)
 }
 
@@ -134,7 +133,6 @@ pub fn walk_return<'a, V: Visitor<'a>>(visitor: &mut V, ret: &'a Return) {
 }
 
 pub fn walk_var_decl<'a, V: Visitor<'a>>(visitor: &mut V, var_decl: &'a VarDecl) {
-    visitor.visit_identifier(&var_decl.var_name);
     if let Some(ref expr) = var_decl.expr {
         visitor.visit_expression(expr);
     }
@@ -159,7 +157,6 @@ pub fn walk_binary_op<'a, V: Visitor<'a>>(visitor: &mut V, binary_op: &'a Binary
 
 pub fn walk_field_access<'a, V: Visitor<'a>>(visitor: &mut V, field_access: &'a FieldAccess) {
     visitor.visit_expression(&field_access.target);
-    visitor.visit_identifier(&field_access.field_name);
 }
 
 pub fn walk_literal<'a, V: Visitor<'a>>(visitor: &mut V, literal: &'a Literal) { }
@@ -171,11 +168,7 @@ pub fn walk_method_call<'a, V: Visitor<'a>>(visitor: &mut V, method_call: &'a Me
     }
 }
 
-pub fn walk_new<'a, V: Visitor<'a>>(visitor: &mut V, new: &'a New) {
-    for arg in &new.args {
-        visitor.visit_expression(arg);
-    }
-}
+pub fn walk_new<'a, V: Visitor<'a>>(visitor: &mut V, new: &'a New) { }
 
 pub fn walk_identifier<'a, V: Visitor<'a>>(visitor: &mut V, identifier: &'a Identifier) { }
 

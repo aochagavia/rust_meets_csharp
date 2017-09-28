@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 use std::cell::Cell;
-use std::collections::HashMap;
 use std::fmt;
 
 use analysis::labels;
@@ -10,7 +9,7 @@ use super::pretty::PrettyPrinter;
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct Label(u32);
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Type {
     Array(Box<Type>),
     Custom(String),
@@ -42,9 +41,9 @@ pub fn fresh_label() -> Label {
 }
 
 // A program
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Program {
-    pub files: HashMap<String, File>
+    pub items: Vec<TopItem>
 }
 
 impl fmt::Display for Program {
@@ -55,9 +54,7 @@ impl fmt::Display for Program {
 
 impl Program {
     pub fn classes<'a>(&'a self) -> impl Iterator<Item=&'a ClassDecl> {
-        self.files.values()
-            .flat_map(|x| x.items.iter()) // Get a stream of TopItem
-            .map(|&TopItem::ClassDecl(ref cd)| cd)
+        self.items.iter().map(|&TopItem::ClassDecl(ref cd)| cd)
     }
 
     pub fn methods<'a>(&'a self) -> impl Iterator<Item=&'a MethodDecl> {
@@ -67,23 +64,23 @@ impl Program {
     }
 }
 
-#[derive(Debug)]
-pub struct File {
-    pub items: Vec<TopItem>
-}
-
 /// Top-level items
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum TopItem {
     /// Class declaration
     ClassDecl(ClassDecl),
 }
 
-#[derive(Debug)]
+impl fmt::Display for TopItem {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        PrettyPrinter::new().print_top_item(f, self)
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct ClassDecl {
     pub label: Label,
     pub name: String,
-    pub superclass: Option<String>,
     pub items: Vec<ClassItem>
 }
 
@@ -104,7 +101,7 @@ impl ClassDecl {
 }
 
 /// Class items
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum ClassItem {
     /// Field declaration
     FieldDecl(FieldDecl),
@@ -128,7 +125,7 @@ impl ClassItem {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct FieldDecl {
     pub label: Label,
     pub name: String,
@@ -136,7 +133,7 @@ pub struct FieldDecl {
     pub assignment: Option<Expression>
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct MethodDecl {
     pub label: Label,
     pub name: String,
@@ -146,7 +143,7 @@ pub struct MethodDecl {
     pub return_ty: Type
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Param {
     pub label: Label,
     pub name: String,
@@ -154,7 +151,7 @@ pub struct Param {
 }
 
 /// Statements
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Statement {
     /// Assignment
     Assign(Assign),
@@ -166,20 +163,20 @@ pub enum Statement {
     VarDecl(VarDecl),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Assign {
     pub label: Label,
     pub var_name: String,
     pub expr: Expression
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Return {
     pub label: Label,
     pub expr: Option<Expression>
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct VarDecl {
     pub label: Label, // FIXME: could we remove this label?
     pub var_name: String,
@@ -188,7 +185,7 @@ pub struct VarDecl {
 }
 
 /// Expressions
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Expression {
     /// Binary operators
     BinaryOp(BinaryOp),
@@ -208,7 +205,7 @@ pub enum Expression {
     This(Label),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct BinaryOp {
     pub label: Label,
     pub operator: BinaryOperator,
@@ -216,14 +213,14 @@ pub struct BinaryOp {
     pub right: Box<Expression>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct FieldAccess {
     pub label: Label,
     pub target: Box<Expression>,
     pub field_name: String,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct MethodCall {
     pub label: Label,
     pub target: Box<Expression>,
@@ -231,14 +228,13 @@ pub struct MethodCall {
     pub args: Vec<Expression>
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct New {
     pub label: Label,
-    pub class_name: String,
-    pub args: Vec<Expression>
+    pub class_name: String
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Identifier {
     pub label: Label,
     pub name: String
@@ -266,7 +262,7 @@ impl Expression {
 }
 
 /// Literals
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Literal {
     /// Int
     Int(i64),

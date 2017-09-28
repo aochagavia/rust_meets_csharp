@@ -53,14 +53,9 @@ impl PrettyPrinter {
 
     // AST-related
     pub fn print_program(&mut self, f: &mut fmt::Formatter, p: &Program) -> fmt::Result {
-        for (path, file) in &p.files {
-            println!("-------");
-            println!("| File: {}", path);
-            println!("-------");
-            for item in &file.items {
-                self.print_top_item(f, item)?;
-                writeln!(f)?;
-            }
+        for item in &p.items {
+            self.print_top_item(f, item)?;
+            writeln!(f)?;
         }
 
         Ok(())
@@ -69,10 +64,6 @@ impl PrettyPrinter {
     pub fn print_top_item(&mut self, f: &mut fmt::Formatter, i: &TopItem) -> fmt::Result {
         let &TopItem::ClassDecl(ref cd) = i;
         write!(f, "class {}", cd.name)?;
-
-        if let Some(ref superclass) = cd.superclass {
-            write!(f, " : {} ", superclass)?;
-        }
 
         self.bracket_open(f)?;
 
@@ -160,9 +151,7 @@ impl PrettyPrinter {
                 write!(f, ")")?;
             }
             Expression::New(ref new) => {
-                write!(f, "new {}(", new.class_name)?;
-                PrettyPrinter::comma_separated(f, &new.args, |f, expr| self.print_expression(f, expr) )?;
-                write!(f, ")")?;
+                write!(f, "new {}()", new.class_name)?;
             }
             Expression::Identifier(ref s) => {
                 s.name.fmt(f)?;

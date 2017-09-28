@@ -2,15 +2,15 @@ use ast::*;
 
 macro_rules! nodes {
     ( $( $x:ident ),* ) => {
-        pub enum Node {
+        pub enum Node<'a> {
             $(
-                $x($x),
+                $x(&'a $x),
             )*
         }
 
         $(
             impl DerivedFromNode for $x {
-                fn unwrap(node: &Node) -> &$x {
+                fn unwrap<'a>(node: &'a Node) -> &'a $x {
                     match *node {
                         Node::$x(ref x) => x,
                         _ => unreachable!()
@@ -33,16 +33,13 @@ nodes! {
     Identifier
 }
 
-impl Node {
-    pub fn downcast<T>(&self) -> &T
+impl<'a> Node<'a> {
+    pub fn downcast<T>(&'a self) -> &'a T
     where T: DerivedFromNode {
         T::unwrap(self)
     }
 }
 
 pub trait DerivedFromNode {
-    fn unwrap(node: &Node) -> &Self;
+    fn unwrap<'a>(node: &'a Node) -> &'a Self;
 }
-
-// FIXME: this macro generates CamelCase function names, which don't follow
-// Rust convention

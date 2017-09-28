@@ -42,12 +42,10 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
     pub fn lower_program(mut self) -> LoweringOutput {
         let mut methods = Vec::new();
 
-        // Generate code for intrinsics
-        for intrinsic in QueryEngine::intrinsics() {
-            let method_id = MethodId(self.methods.len());
-            self.methods.insert(intrinsic.label, method_id);
-            methods.push(self.lower_console_write_line(intrinsic));
-        }
+        // Generate code for Console.WriteLine
+        let method_id = MethodId(self.methods.len());
+        self.methods.insert(ast::fresh_label().assert_as_method_decl(), method_id);
+        methods.push(self.lower_console_write_line());
 
         // Note, in the future we could also generate code for prelude methods
         // i.e. int.Max
@@ -68,6 +66,7 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
                     }
                 }
             }
+
             self.classes.insert(cd.label.assert_as_class_decl(), ClassInfo {
                 name: cd.name.to_owned(),
                 field_names
@@ -79,7 +78,7 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
             methods.push(self.lower_method(md));
         }
 
-        let ep = self.query_engine.query_entry_point();
+        let ep = self.query_engine.entry_point().label.assert_as_method_decl();
         let program = ir::Program { methods, entry_point: self.methods[&ep] };
         LoweringOutput {
             program,
@@ -87,7 +86,7 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
         }
     }
 
-    fn lower_console_write_line(&mut self, _: analysis::IntrinsicInfo) -> ir::Method {
+    fn lower_console_write_line(&mut self) -> ir::Method {
         // We assume that the arguments are correctly passed. This is enforced by the type checker
         ir::Method {
             body: vec![
@@ -201,14 +200,8 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
                 self.lower_method_call(label, this, &mc.args)
             }
             ast::Expression::New(ref n) => {
-                // Invoking a constructor is just a method call to a non-static method.
-                // Note that `this` is a newly created object
-                let method_label = self.query_engine.query_method_decl(n.label.assert_as_method_use());
-                assert!(!self.query_engine.query_is_static(method_label));
-
-                let class_label = self.query_engine.query_class_decl(n.label.assert_as_type_use());
-                let this = Some(ir::Expression::NewObject(class_label));
-                self.lower_method_call(method_label, this, &n.args)
+                let class_label = self.query_engine.query_class_decl(&n.class_name);
+                ir::Expression::NewObject(class_label)
             }
             ast::Expression::Identifier(ref i) => {
                 let var_label = self.query_engine.query_var_decl(i.label);
