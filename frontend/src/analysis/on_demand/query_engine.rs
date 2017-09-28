@@ -100,15 +100,6 @@ impl<'a> QueryEngine<'a> {
         unimplemented!()
     }
 
-    pub fn query_parent_node(&mut self, node: Label) -> Option<Label> {
-        unimplemented!()
-    }
-
-    pub fn query_parent_method(&mut self, node: Label) -> labels::MethodDecl {
-        // Note: should work for statements and expressions. Panics otherwise.
-        unimplemented!()
-    }
-
     pub fn query_return_type(&mut self, method: labels::MethodDecl) -> TypeId {
         unimplemented!()
     }

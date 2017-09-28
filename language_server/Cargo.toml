@@ -1,7 +1,0 @@
-[package]
-name = "language_server"
-version = "0.1.0"
-authors = ["Adolfo Ochagavía <aochagavia92@gmail.com>"]
-
-[dependencies.frontend]
-path = "../frontend"

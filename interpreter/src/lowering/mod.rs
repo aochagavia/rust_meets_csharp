@@ -115,24 +115,23 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
 
         let mut body = Vec::new();
         for stmt in &m.body {
-            self.lower_statement(stmt, &mut body);
+            self.lower_statement(stmt, &mut body, &m);
         }
 
         ir::Method { body }
     }
 
-    fn lower_statement(&mut self, s: &ast::Statement, body: &mut Vec<ir::Statement>) {
+    fn lower_statement(&mut self, s: &ast::Statement, body: &mut Vec<ir::Statement>, parent_method: &ast::MethodDecl) {
         match *s {
             ast::Statement::Assign(ref assign) => {
-                body.push(self.lower_assignment(assign.label, &assign.expr));
+                body.push(self.lower_assignment(assign.label, &assign.expr, parent_method));
             }
             ast::Statement::Expression(ref expr) => {
-                let expr = self.lower_expression(expr);
+                let expr = self.lower_expression(expr, parent_method);
                 body.push(ir::Statement::Expression(expr));
             }
             ast::Statement::Return(ref ret) => {
-                let parent_method = self.query_engine.query_parent_method(ret.label);
-                let ret_ty = self.query_engine.query_return_type(parent_method);
+                let ret_ty = self.query_engine.query_return_type(parent_method.label.assert_as_method_decl());
 
                 let void_id = self.query_engine.types_mut().get_id(analysis::Type::Void);
                 let expr_ty = ret.expr.as_ref().map(|e| self.query_engine.query_expr_type(e.label()).unwrap())
@@ -142,7 +141,7 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
                     panic!("Type mismatch in return statement: {:?} and {:?}", ret_ty, expr_ty);
                 }
 
-                let expr = ret.expr.as_ref().map(|r| self.lower_expression(r));
+                let expr = ret.expr.as_ref().map(|r| self.lower_expression(r, parent_method));
                 body.push(ir::Statement::Return(expr));
             }
             ast::Statement::VarDecl(ref var_decl) => {
@@ -152,13 +151,13 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
                 // Generate code
                 body.push(ir::Statement::VarDecl);
                 if let Some(ref expr) = var_decl.expr {
-                    body.push(self.lower_assignment(var_decl.label, expr));
+                    body.push(self.lower_assignment(var_decl.label, expr, parent_method));
                 }
             }
         }
     }
 
-    fn lower_expression(&mut self, e: &ast::Expression) -> ir::Expression {
+    fn lower_expression(&mut self, e: &ast::Expression, parent_method: &ast::MethodDecl) -> ir::Expression {
         match *e {
             ast::Expression::BinaryOp(ref bin_op) => {
                 // Type check left and right
@@ -171,13 +170,13 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
                 }
 
                 // Generate code
-                let left = self.lower_expression(&bin_op.left);
-                let right = self.lower_expression(&bin_op.right);
+                let left = self.lower_expression(&bin_op.left, parent_method);
+                let right = self.lower_expression(&bin_op.right, parent_method);
                 ir::Expression::Intrinsic(Box::new(
                     ir::Intrinsic::IntOp(bin_op.operator, left, right)))
             }
             ast::Expression::FieldAccess(ref fa) => {
-                let target = self.lower_expression(&fa.target);
+                let target = self.lower_expression(&fa.target, parent_method);
                 let field_label = self.query_engine.query_field(fa.label.assert_as_var_use());
                 let field_id = self.fields[&field_label];
                 ir::Expression::FieldAccess(Box::new(ir::FieldAccess { target, field_id }))
@@ -187,7 +186,7 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
                     ast::Literal::Int(i) => ir::Literal::Int(i),
                     ast::Literal::String(ref s) => ir::Literal::String(s.clone()),
                     ast::Literal::Array(_, ref exprs) => {
-                        let exprs = exprs.iter().map(|e| self.lower_expression(e)).collect();
+                        let exprs = exprs.iter().map(|e| self.lower_expression(e, parent_method)).collect();
                         ir::Literal::Array(exprs)
                     },
                     ast::Literal::Null => ir::Literal::Null
@@ -196,8 +195,8 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
             ast::Expression::MethodCall(ref mc) => {
                 let label = self.query_engine.query_method_decl(mc.label.assert_as_method_use());
                 let is_static = self.query_engine.query_is_static(label);
-                let this = if is_static { None } else { Some(self.lower_expression(&mc.target)) };
-                self.lower_method_call(label, this, &mc.args)
+                let this = if is_static { None } else { Some(self.lower_expression(&mc.target, parent_method)) };
+                self.lower_method_call(label, this, &mc.args, parent_method)
             }
             ast::Expression::New(ref n) => {
                 let class_label = self.query_engine.query_class_decl(&n.class_name);
@@ -208,8 +207,7 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
                 ir::Expression::VarRead(self.var_tracker.get_var_id(var_label))
             }
             ast::Expression::This(label) => {
-                let parent = self.query_engine.query_parent_method(label);
-                if self.query_engine.query_is_static(parent) {
+                if parent_method.is_static {
                     panic!("`this` keyword used inside static method");
                 }
 
@@ -219,7 +217,7 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
         }
     }
 
-    fn lower_assignment(&mut self, target: ast::Label, expr: &ast::Expression) -> ir::Statement {
+    fn lower_assignment(&mut self, target: ast::Label, expr: &ast::Expression, parent_method: &ast::MethodDecl) -> ir::Statement {
         // Note: right now, the only lvalues are variables. No array indexing.
         // Type check
         let decl_label = self.query_engine.query_var_decl(target);
@@ -230,12 +228,12 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
         }
 
         // Generate code
-        let value = self.lower_expression(expr);
+        let value = self.lower_expression(expr, parent_method);
         let var_id = self.var_tracker.get_var_id(decl_label);
         ir::Statement::Assign(ir::Assign { var_id, value })
     }
 
-    fn lower_method_call(&mut self, method_label: labels::MethodDecl, this: Option<ir::Expression>, args: &[ast::Expression]) -> ir::Expression {
+    fn lower_method_call(&mut self, method_label: labels::MethodDecl, this: Option<ir::Expression>, args: &[ast::Expression], parent_method: &ast::MethodDecl) -> ir::Expression {
         // Note: we need to pass the target expression as a first argument to the function
         let mut arguments: Vec<_> = this.into_iter().collect();
 
@@ -249,7 +247,7 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
             }
 
             // Generate code
-            arguments.push(self.lower_expression(arg));
+            arguments.push(self.lower_expression(arg, parent_method));
         }
 
         ir::Expression::MethodCall(ir::MethodCall {
