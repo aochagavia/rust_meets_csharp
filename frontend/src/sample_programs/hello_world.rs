@@ -34,7 +34,7 @@ fn program_class() -> TopItem {
                 label: fresh_label(),
                 target: Box::new(Expression::Identifier(Identifier { name: "Console".to_string(), label: fresh_label() })),
                 method_name: "WriteLine".to_string(),
-                args: vec![Expression::Literal(fresh_label(), Literal::String("Hello world!".to_string()))]
+                args: vec![Expression::Literal(Literal { label: fresh_label(), kind: LiteralKind::String("Hello world!".to_string()) })]
             }))
         ],
         is_static: true,

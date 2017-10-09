@@ -17,3 +17,12 @@ pub enum Type {
     Void,
     Class(self::labels::ClassDecl)
 }
+
+impl Type {
+    pub fn class_decl(&self) -> self::labels::ClassDecl {
+        match self {
+            &Type::Class(cd) => cd,
+            _ => panic!("Type was not a Class type")
+        }
+    }
+}

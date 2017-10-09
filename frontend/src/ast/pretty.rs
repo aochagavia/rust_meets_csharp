@@ -141,7 +141,7 @@ impl PrettyPrinter {
                 self.print_expression(f, &access.target)?;
                 write!(f, ".{}", access.field_name)?;
             }
-            Expression::Literal(_, ref l) => {
+            Expression::Literal(ref l) => {
                 l.fmt(f)?;
             }
             Expression::MethodCall(ref call) => {

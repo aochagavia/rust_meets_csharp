@@ -70,7 +70,7 @@ pub trait Visitor<'a>: Sized {
         walk_identifier(self, identifier)
     }
 
-    fn visit_this(&mut self) {
+    fn visit_this(&mut self, this: &'a This) {
         walk_this(self)
     }
 }
@@ -142,11 +142,11 @@ pub fn walk_expression<'a, V: Visitor<'a>>(visitor: &mut V, expr: &'a Expression
     match *expr {
         Expression::BinaryOp(ref op) => visitor.visit_binary_op(op),
         Expression::FieldAccess(ref fa) => visitor.visit_field_access(fa),
-        Expression::Literal(_, ref l) => visitor.visit_literal(l),
+        Expression::Literal(ref l) => visitor.visit_literal(l),
         Expression::MethodCall(ref mc) => visitor.visit_method_call(mc),
         Expression::New(ref n) => visitor.visit_new(n),
         Expression::Identifier(ref i) => visitor.visit_identifier(i),
-        Expression::This(_) => visitor.visit_this()
+        Expression::This(ref t) => visitor.visit_this(t)
     }
 }
 

@@ -88,10 +88,12 @@ impl<'a> Visitor<'a> for PreprocessVisitor<'a> {
     }
 
     fn visit_var_decl(&mut self, var_decl: &'a VarDecl) {
+        self.insert_node(var_decl.label, Node::VarDecl(var_decl));
         visitor::walk_var_decl(self, var_decl)
     }
 
     fn visit_binary_op(&mut self, binary_op: &'a BinaryOp) {
+        self.insert_node(binary_op.label, Node::BinaryOp(binary_op));
         visitor::walk_binary_op(self, binary_op)
     }
 
@@ -103,6 +105,7 @@ impl<'a> Visitor<'a> for PreprocessVisitor<'a> {
     }
 
     fn visit_literal(&mut self, literal: &'a Literal) {
+        self.insert_node(literal.label, Node::Literal(literal));
         visitor::walk_literal(self, literal)
     }
 
@@ -114,6 +117,7 @@ impl<'a> Visitor<'a> for PreprocessVisitor<'a> {
     }
 
     fn visit_new(&mut self, new: &'a New) {
+        self.insert_node(new.label, Node::New(new));
         visitor::walk_new(self, new)
     }
 
@@ -124,7 +128,8 @@ impl<'a> Visitor<'a> for PreprocessVisitor<'a> {
         visitor::walk_identifier(self, identifier)
     }
 
-    fn visit_this(&mut self) {
+    fn visit_this(&mut self, this: &'a This) {
+        self.insert_node(this.label, Node::This(this));
         visitor::walk_this(self)
     }
 }

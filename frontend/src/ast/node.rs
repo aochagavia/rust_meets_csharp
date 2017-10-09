@@ -21,16 +21,24 @@ macro_rules! nodes {
     }
 }
 
+// Note: when adding structs to this list we need to make sure to modify the visitor as well
+// Otherwise they won't be collected in the node map
 nodes! {
     // Top level items
     ClassDecl,
     // Class items
     FieldDecl,
     MethodDecl,
+    // Statements
+    VarDecl,
     // Expressions
-    FieldAccess,
+    FieldAccess, // Right now, this is useless... Since there is no way of assigning a value to a field
     MethodCall,
-    Identifier
+    Identifier,
+    BinaryOp,
+    Literal,
+    New,
+    This
 }
 
 impl<'a> Node<'a> {

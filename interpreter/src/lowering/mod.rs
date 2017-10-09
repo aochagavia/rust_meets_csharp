@@ -181,18 +181,19 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
                 let field_id = self.fields[&field_label];
                 ir::Expression::FieldAccess(Box::new(ir::FieldAccess { target, field_id }))
             }
-            ast::Expression::Literal(_, ref l) => {
-                ir::Expression::Literal(match *l {
-                    ast::Literal::Int(i) => ir::Literal::Int(i),
-                    ast::Literal::String(ref s) => ir::Literal::String(s.clone()),
-                    ast::Literal::Array(_, ref exprs) => {
+            ast::Expression::Literal(ref l) => {
+                ir::Expression::Literal(match &l.kind {
+                    &ast::LiteralKind::Int(i) => ir::Literal::Int(i),
+                    &ast::LiteralKind::String(ref s) => ir::Literal::String(s.clone()),
+                    &ast::LiteralKind::Array(_, ref exprs) => {
                         let exprs = exprs.iter().map(|e| self.lower_expression(e, parent_method)).collect();
                         ir::Literal::Array(exprs)
                     },
-                    ast::Literal::Null => ir::Literal::Null
+                    &ast::LiteralKind::Null => ir::Literal::Null
                 })
             }
             ast::Expression::MethodCall(ref mc) => {
+                // FIXME: what if an intrinsic method is called? Console.WriteLine
                 let label = self.query_engine.query_method_decl(mc.label.assert_as_method_use());
                 let is_static = self.query_engine.query_is_static(label);
                 let this = if is_static { None } else { Some(self.lower_expression(&mc.target, parent_method)) };
@@ -206,7 +207,7 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
                 let var_label = self.query_engine.query_var_decl(i.label);
                 ir::Expression::VarRead(self.var_tracker.get_var_id(var_label))
             }
-            ast::Expression::This(label) => {
+            ast::Expression::This(ref t) => {
                 if parent_method.is_static {
                     panic!("`this` keyword used inside static method");
                 }

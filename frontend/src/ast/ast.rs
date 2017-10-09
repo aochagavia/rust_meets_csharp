@@ -92,6 +92,10 @@ impl ClassDecl {
                   .unwrap().label
     }
 
+    pub fn find_method_any<'a>(&'a self, name: &str) -> &'a MethodDecl {
+        self.items.iter().filter_map(|i| i.method_decl()).find(|md| &md.name == name).unwrap()
+    }
+
     pub fn find_method(&self, is_static: bool, name: &str) -> Label {
         self.items.iter()
                   .filter_map(|i| i.method_decl())
@@ -150,7 +154,7 @@ pub struct Param {
     pub ty: Type
 }
 
-/// Statements
+/// StatementsFAssign
 #[derive(Clone, Debug)]
 pub enum Statement {
     /// Assignment
@@ -192,7 +196,7 @@ pub enum Expression {
     /// Field access
     FieldAccess(FieldAccess),
     /// Literals
-    Literal(Label, Literal),
+    Literal(Literal),
     /// Method call (may be static)
     MethodCall(MethodCall),
     /// New (construct class and allocate it on the heap)
@@ -202,7 +206,7 @@ pub enum Expression {
     /// Represents a variable usage or a class name when calling a static method
     Identifier(Identifier),
     /// The `this` keyword
-    This(Label),
+    This(This),
 }
 
 #[derive(Clone, Debug)]
@@ -218,6 +222,12 @@ pub struct FieldAccess {
     pub label: Label,
     pub target: Box<Expression>,
     pub field_name: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct Literal {
+    pub label: Label,
+    pub kind: LiteralKind
 }
 
 #[derive(Clone, Debug)]
@@ -246,24 +256,36 @@ impl fmt::Display for Identifier {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct This {
+    pub label: Label
+}
+
 impl Expression {
     pub fn label(&self) -> labels::Expression {
         match *self {
             Expression::BinaryOp(BinaryOp { label, .. })
             | Expression::FieldAccess(FieldAccess { label, .. })
-            | Expression::Literal(label, _)
+            | Expression::Literal(Literal { label, .. })
             | Expression::MethodCall(MethodCall { label, .. })
             | Expression::New(New { label, .. })
             | Expression::Identifier(Identifier { label, .. })
-            | Expression::This(label)
+            | Expression::This(This { label, .. })
             => labels::Expression(label)
+        }
+    }
+
+    pub fn identifier(&self) -> &Identifier {
+        match self {
+            &Expression::Identifier(ref i) => i,
+            _ => panic!()
         }
     }
 }
 
 /// Literals
 #[derive(Clone, Debug)]
-pub enum Literal {
+pub enum LiteralKind {
     /// Int
     Int(i64),
     /// String
@@ -276,11 +298,11 @@ pub enum Literal {
 
 impl fmt::Display for Literal {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Literal::Int(x) => x.fmt(f),
-            Literal::String(ref s) => write!(f, "\"{}\"", s),
-            Literal::Null => "null".fmt(f),
-            Literal::Array(_, _) => unimplemented!()
+        match self.kind {
+            LiteralKind::Int(x) => x.fmt(f),
+            LiteralKind::String(ref s) => write!(f, "\"{}\"", s),
+            LiteralKind::Null => "null".fmt(f),
+            LiteralKind::Array(_, _) => unimplemented!()
         }
     }
 }

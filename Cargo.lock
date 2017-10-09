@@ -1,5 +1,5 @@
 [root]
-name = "language_server"
+name = "interpreter"
 version = "0.1.0"
 dependencies = [
  "frontend 0.1.0",
@@ -8,11 +8,4 @@ dependencies = [
 [[package]]
 name = "frontend"
 version = "0.1.0"
-
-[[package]]
-name = "interpreter"
-version = "0.1.0"
-dependencies = [
- "frontend 0.1.0",
-]
 
