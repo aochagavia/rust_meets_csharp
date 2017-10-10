@@ -8,8 +8,10 @@ use super::visitor::PreprocessVisitor;
 
 pub struct AstData<'a> {
     pub nodes: HashMap<Label, Node<'a>>,
+    pub var_map: HashMap<Label, &'a VarDecl>,
+    pub this_map: HashMap<Label, &'a ClassDecl>,
     pub classes_by_name: HashMap<&'a str, &'a ClassDecl>,
-    pub entry_point: &'a MethodDecl
+    pub entry_point: &'a MethodDecl,
 }
 
 pub struct AstPreprocessor;
@@ -36,6 +38,8 @@ impl AstPreprocessor {
 
         AstData {
             nodes: visitor.nodes,
+            var_map: visitor.var_map,
+            this_map: visitor.this_map,
             classes_by_name: visitor.classes_by_name,
             entry_point: ep
         }

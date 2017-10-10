@@ -22,10 +22,6 @@ pub trait Visitor<'a>: Sized {
         walk_method_decl(self, method_decl)
     }
 
-    fn visit_param(&mut self, param: &'a Param) {
-        walk_param(self, param)
-    }
-
     fn visit_statement(&mut self, statement: &'a Statement) {
         walk_statement(self, statement)
     }
@@ -103,15 +99,13 @@ pub fn walk_field_decl<'a, V: Visitor<'a>>(visitor: &mut V, field_decl: &'a Fiel
 
 pub fn walk_method_decl<'a, V: Visitor<'a>>(visitor: &mut V, method_decl: &'a MethodDecl) {
     for param in &method_decl.params {
-        visitor.visit_param(param);
+        visitor.visit_var_decl(param);
     }
 
     for statement in &method_decl.body {
         visitor.visit_statement(statement);
     }
 }
-
-pub fn walk_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a Param) { }
 
 pub fn walk_statement<'a, V: Visitor<'a>>(visitor: &mut V, statement: &'a Statement) {
     match *statement {

@@ -6,7 +6,7 @@ fn console_class() -> TopItem {
         ClassItem::MethodDecl(MethodDecl {
             label: fresh_label(),
             name: name.to_string(),
-            params: vec![Param { label: fresh_label(), name: "arg".to_string(), ty: Type::Custom("String".to_string()) }],
+            params: vec![VarDecl { label: fresh_label(), var_name: "arg".to_string(), ty: Type::Custom("String".to_string()), expr: None }],
             body: Vec::new(),
             is_static: true,
             return_ty: Type::Void
@@ -28,7 +28,7 @@ fn program_class() -> TopItem {
     let main_method = ClassItem::MethodDecl(MethodDecl {
         label: fresh_label(),
         name: "Main".to_string(),
-        params: vec![Param { label: fresh_label(), name: "args".to_string(), ty: Type::Array(Box::new(Type::Custom("String".to_string()))) }],
+        params: vec![VarDecl { label: fresh_label(), var_name: "args".to_string(), ty: Type::Array(Box::new(Type::Custom("String".to_string()))), expr: None }],
         body: vec![
             Statement::Expression(Expression::MethodCall(MethodCall {
                 label: fresh_label(),

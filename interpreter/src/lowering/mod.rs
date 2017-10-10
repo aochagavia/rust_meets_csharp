@@ -137,7 +137,7 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
                 let expr_ty = ret.expr.as_ref().map(|e| self.query_engine.query_expr_type(e.label()).unwrap())
                                                .unwrap_or(void_id);
 
-                if ret_ty != expr_ty {
+                if !self.query_engine.types().unify(ret_ty, expr_ty) {
                     panic!("Type mismatch in return statement: {:?} and {:?}", ret_ty, expr_ty);
                 }
 
@@ -158,17 +158,11 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
     }
 
     fn lower_expression(&mut self, e: &ast::Expression, parent_method: &ast::MethodDecl) -> ir::Expression {
+        // Ensure everything is well typed
+        self.query_engine.query_expr_type(e.label());
+        // Generate code
         match *e {
             ast::Expression::BinaryOp(ref bin_op) => {
-                // Type check left and right
-                let left_ty = self.query_engine.query_expr_type(bin_op.left.label()).unwrap();
-                let right_ty = self.query_engine.query_expr_type(bin_op.right.label()).unwrap();
-
-                let type_correct = left_ty == right_ty && self.query_engine.types().get(left_ty) == analysis::Type::Int;
-                if !type_correct {
-                    panic!("Invalid types in binary operator: {:?} and {:?}. Only int allowed!", left_ty, right_ty)
-                }
-
                 // Generate code
                 let left = self.lower_expression(&bin_op.left, parent_method);
                 let right = self.lower_expression(&bin_op.right, parent_method);
@@ -220,15 +214,7 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
 
     fn lower_assignment(&mut self, target: ast::Label, expr: &ast::Expression, parent_method: &ast::MethodDecl) -> ir::Statement {
         // Note: right now, the only lvalues are variables. No array indexing.
-        // Type check
         let decl_label = self.query_engine.query_var_decl(target);
-        let var_ty = self.query_engine.query_var_type(decl_label);
-        let expr_ty = self.query_engine.query_expr_type(expr.label()).unwrap();
-        if var_ty != expr_ty {
-            panic!("Type mismatch in assignment: {:?} and {:?}", var_ty, expr_ty);
-        }
-
-        // Generate code
         let value = self.lower_expression(expr, parent_method);
         let var_id = self.var_tracker.get_var_id(decl_label);
         ir::Statement::Assign(ir::Assign { var_id, value })
@@ -238,16 +224,7 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
         // Note: we need to pass the target expression as a first argument to the function
         let mut arguments: Vec<_> = this.into_iter().collect();
 
-        // Note, that we skip the `this` param here since we already know it is type correct
-        let params = self.query_engine.query_param_types(method_label).into_iter().skip(arguments.len());
-        for (arg, param_ty) in args.iter().zip(params) {
-            // Type check argument and param
-            let arg_ty = self.query_engine.query_expr_type(arg.label()).expect("Unreachable");
-            if arg_ty != param_ty {
-                panic!("Mismatched types between argument and parameter: {:?} and {:?}", arg_ty, param_ty);
-            }
-
-            // Generate code
+        for arg in args {
             arguments.push(self.lower_expression(arg, parent_method));
         }
 

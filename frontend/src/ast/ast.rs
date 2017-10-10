@@ -141,17 +141,10 @@ pub struct FieldDecl {
 pub struct MethodDecl {
     pub label: Label,
     pub name: String,
-    pub params: Vec<Param>,
+    pub params: Vec<VarDecl>,
     pub body: Vec<Statement>,
     pub is_static: bool,
     pub return_ty: Type
-}
-
-#[derive(Clone, Debug)]
-pub struct Param {
-    pub label: Label,
-    pub name: String,
-    pub ty: Type
 }
 
 /// StatementsFAssign
@@ -182,7 +175,7 @@ pub struct Return {
 
 #[derive(Clone, Debug)]
 pub struct VarDecl {
-    pub label: Label, // FIXME: could we remove this label?
+    pub label: Label,
     pub var_name: String,
     pub ty: Type,
     pub expr: Option<Expression>

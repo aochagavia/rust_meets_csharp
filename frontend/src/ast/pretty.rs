@@ -86,7 +86,7 @@ impl PrettyPrinter {
 
                     write!(f, "{} {}(", md.return_ty, md.name)?;
                     PrettyPrinter::comma_separated(f, &md.params, |f, param| {
-                        write!(f, "{} {}", param.ty, param.name)
+                        write!(f, "{} {}", param.ty, param.var_name)
                     })?;
                     write!(f, ") ")?;
                     self.bracket_open(f)?;

@@ -15,9 +15,15 @@ pub enum PreprocessError {
 #[derive(Default)]
 pub struct PreprocessVisitor<'a> {
     pub nodes: HashMap<Label, Node<'a>>,
+    pub var_map: HashMap<Label, &'a VarDecl>,
+    pub this_map: HashMap<Label, &'a ClassDecl>,
     pub classes_by_name: HashMap<&'a str, &'a ClassDecl>,
     pub entry_point: Option<&'a MethodDecl>,
-    pub errors: Vec<PreprocessError>
+    pub errors: Vec<PreprocessError>,
+
+    // Used during processing
+    pub current_class: Option<&'a ClassDecl>,
+    pub current_vars: HashMap<&'a str, &'a VarDecl>,
 }
 
 impl<'a> PreprocessVisitor<'a> {
@@ -29,28 +35,32 @@ impl<'a> PreprocessVisitor<'a> {
 
 impl<'a> Visitor<'a> for PreprocessVisitor<'a> {
     fn visit_class_decl(&mut self, decl: &'a ClassDecl) {
+        // Necessary bookkeeping
+        self.current_class = Some(decl);
+
         let label = decl.label.assert_as_class_decl();
 
-        // Insert and check whether the class already exists
+        // Class map
         let repeated = self.classes_by_name.insert(&decl.name, decl).is_some();
         if repeated {
             self.errors.push(PreprocessError::MultiClassDecl(label));
         }
 
-        // Track nodes
+        // Node tracking
         self.insert_node(decl.label, Node::ClassDecl(&decl));
 
         visitor::walk_class_decl(self, decl);
     }
 
     fn visit_field_decl(&mut self, decl: &'a FieldDecl) {
-        // Track nodes
         self.insert_node(decl.label, Node::FieldDecl(&decl));
-
         visitor::walk_field_decl(self, decl)
     }
 
     fn visit_method_decl(&mut self, decl: &'a MethodDecl) {
+        // Necessary bookkeeping for name resolution
+        self.current_vars.clear();
+
         let label = decl.label.assert_as_method_decl();
 
         // Entry points must be static and be called Main. Parameters are ignored
@@ -61,14 +71,11 @@ impl<'a> Visitor<'a> for PreprocessVisitor<'a> {
             }
         }
 
-        // Track nodes
+        // Node tracking
         self.insert_node(decl.label, Node::MethodDecl(&decl));
-
         visitor::walk_method_decl(self, decl);
-    }
 
-    fn visit_param(&mut self, param: &'a Param) {
-        visitor::walk_param(self, param)
+        println!("Method: {}. Declared vars: {:?}", decl.name, self.current_vars);
     }
 
     fn visit_statement(&mut self, statement: &'a Statement) {
@@ -88,6 +95,13 @@ impl<'a> Visitor<'a> for PreprocessVisitor<'a> {
     }
 
     fn visit_var_decl(&mut self, var_decl: &'a VarDecl) {
+        // Var tracking for name resolution
+        if let Some(_) = self.current_vars.insert(&var_decl.var_name, var_decl) {
+            // A variable with this name already exists in scope
+            panic!("Double declaration of variable: {}", var_decl.var_name);
+        }
+
+        // Node tracking
         self.insert_node(var_decl.label, Node::VarDecl(var_decl));
         visitor::walk_var_decl(self, var_decl)
     }
@@ -98,9 +112,7 @@ impl<'a> Visitor<'a> for PreprocessVisitor<'a> {
     }
 
     fn visit_field_access(&mut self, field_access: &'a FieldAccess) {
-        // Track nodes
         self.insert_node(field_access.label, Node::FieldAccess(&field_access));
-
         visitor::walk_field_access(self, field_access)
     }
 
@@ -122,13 +134,22 @@ impl<'a> Visitor<'a> for PreprocessVisitor<'a> {
     }
 
     fn visit_identifier(&mut self, identifier: &'a Identifier) {
-        // Track nodes
-        self.insert_node(identifier.label, Node::Identifier(&identifier));
+        // An identifier can refer to a variable or a type. We ignore them in the second case
+        let name: &str = &identifier.name;
+        if let Some(vd) = self.current_vars.get(name) {
+            self.var_map.insert(identifier.label, vd);
+        }
 
+        // Node tracking
+        self.insert_node(identifier.label, Node::Identifier(&identifier));
         visitor::walk_identifier(self, identifier)
     }
 
     fn visit_this(&mut self, this: &'a This) {
+        // This map
+        self.this_map.insert(this.label, self.current_class.unwrap());
+
+        // Node tracking
         self.insert_node(this.label, Node::This(this));
         visitor::walk_this(self)
     }

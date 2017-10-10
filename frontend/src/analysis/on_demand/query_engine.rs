@@ -99,9 +99,14 @@ impl<'a> QueryEngine<'a> {
         self.classes_by_name.get(name).expect("No class decl exist for given class name").label.assert_as_class_decl()
     }
 
-    pub fn query_var_decl(&mut self, var_use: Label) -> labels::VarDecl {
-        // The label may correspong to a VarAssign, VarDecl or VarRead
-        unimplemented!()
+    pub fn query_var_decl(&mut self, label: Label) -> labels::VarDecl {
+        // The label may correspong to a VarAssign, VarDecl or Identifier
+        if let Node::VarDecl(_) = self.nodes[&label] {
+            return label.assert_as_var_decl();
+        }
+
+        // VarDecls and Identifiers are in the map
+        self.var_map[&label].label.assert_as_var_decl()
     }
 
     pub fn query_var_type(&mut self, identifier: labels::VarDecl) -> TypeId {
