@@ -47,8 +47,12 @@ impl TypeMap {
         TypeId(2)
     }
 
-    pub fn console_ty(&self) -> TypeId {
+    pub fn bool_ty(&self) -> TypeId {
         TypeId(3)
+    }
+
+    pub fn console_ty(&self) -> TypeId {
+        TypeId(4)
     }
 
     pub fn unify(&self, ty1: TypeId, ty2: TypeId) -> bool {
@@ -80,6 +84,7 @@ impl TypeMap {
                 // See if there is a class that matches the custom type
                 let ty_name: &str = ty_name;
                 match ty_name {
+                    "bool" => self.bool_ty(),
                     "int" => {
                         self.int_ty()
                     }
@@ -105,6 +110,7 @@ impl TypeMap {
 impl Default for TypeMap {
     fn default() -> TypeMap {
         let types = vec![
+            Type::Bool,
             Type::Int,
             Type::String,
             Type::Void,

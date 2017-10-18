@@ -11,6 +11,7 @@ pub struct TypeId(usize);
 /// Represents the type of an expression
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum Type {
+    Bool,
     Int,
     String,
     Console,

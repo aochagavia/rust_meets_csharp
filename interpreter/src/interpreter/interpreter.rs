@@ -116,6 +116,7 @@ impl<'a> Interpreter<'a> {
     fn run_literal(&mut self, l: &ir::Literal) -> rt::Value {
         use self::ir::Literal::*;
         match *l {
+            Bool(b) => rt::Value::Bool(b),
             Int(i) => rt::Value::Int(i),
             String(ref s) => rt::Value::String(s.clone()),
             Array(ref exprs) => rt::Value::Array(exprs.iter().map(|e| self.run_expression(e)).collect()),
@@ -170,6 +171,7 @@ impl<'a> Interpreter<'a> {
                 }
                 print!("]");
             }
+            rt::Value::Bool(b) => print!("{}", b),
             rt::Value::Int(i) => print!("{}", i),
             rt::Value::Object(ref obj) => {
                 let class = &self.classes[&obj.class];

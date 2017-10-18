@@ -220,6 +220,9 @@ impl<'a> QueryEngine<'a> {
             }
             Node::Literal(l) => {
                 match &l.kind {
+                    &LiteralKind::Bool(_) => {
+                        Some(self.types.bool_ty())
+                    }
                     &LiteralKind::Int(_) => {
                         Some(self.types.int_ty())
                     }

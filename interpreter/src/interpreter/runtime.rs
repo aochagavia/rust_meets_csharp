@@ -7,6 +7,7 @@ use frontend::analysis::labels;
 pub enum Value {
     String(String),
     Array(Vec<Value>),
+    Bool(bool),
     Int(i64),
     Object(Object),
     Null

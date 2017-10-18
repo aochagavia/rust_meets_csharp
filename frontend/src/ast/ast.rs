@@ -289,6 +289,8 @@ impl Expression {
 /// Literals
 #[derive(Clone, Debug)]
 pub enum LiteralKind {
+    /// Bool
+    Bool(bool),
     /// Int
     Int(i64),
     /// String
@@ -302,6 +304,7 @@ pub enum LiteralKind {
 impl fmt::Display for Literal {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.kind {
+            LiteralKind::Bool(x) => x.fmt(f),
             LiteralKind::Int(x) => x.fmt(f),
             LiteralKind::String(ref s) => write!(f, "\"{}\"", s),
             LiteralKind::Null => "null".fmt(f),

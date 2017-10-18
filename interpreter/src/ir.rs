@@ -63,6 +63,7 @@ pub struct FieldAccess {
 
 #[derive(Clone, Debug)]
 pub enum Literal {
+    Bool(bool),
     Int(i64),
     String(String),
     Array(Vec<Expression>),

@@ -174,6 +174,7 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
             }
             ast::Expression::Literal(ref l) => {
                 ir::Expression::Literal(match &l.kind {
+                    &ast::LiteralKind::Bool(b) => ir::Literal::Bool(b),
                     &ast::LiteralKind::Int(i) => ir::Literal::Int(i),
                     &ast::LiteralKind::String(ref s) => ir::Literal::String(s.clone()),
                     &ast::LiteralKind::Array(_, ref exprs) => {
