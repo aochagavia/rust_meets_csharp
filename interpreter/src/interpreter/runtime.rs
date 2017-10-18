@@ -3,7 +3,7 @@ use frontend::analysis::labels;
 /// Internal representation of a value
 ///
 /// Note: this resembles `ast::Type`
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Value {
     String(String),
     Array(Vec<Value>),
@@ -13,7 +13,7 @@ pub enum Value {
 }
 
 /// Internal representation of an object
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Object {
     pub class: labels::ClassDecl,
     pub fields: Vec<Value>,

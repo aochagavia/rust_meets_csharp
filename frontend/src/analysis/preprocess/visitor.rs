@@ -75,7 +75,7 @@ impl<'a> Visitor<'a> for PreprocessVisitor<'a> {
         self.insert_node(decl.label, Node::MethodDecl(&decl));
         visitor::walk_method_decl(self, decl);
 
-        println!("Method: {}. Declared vars: {:?}", decl.name, self.current_vars);
+        //println!("Method: {}. Declared vars: {:?}", decl.name, self.current_vars);
     }
 
     fn visit_statement(&mut self, statement: &'a Statement) {

@@ -3,13 +3,13 @@
 use frontend::analysis::labels;
 use frontend::ast::BinaryOperator;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Debug, Copy)]
 pub struct FieldId(pub(crate) usize);
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Debug, Copy)]
 pub struct MethodId(pub(crate) usize);
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Debug, Copy)]
 pub struct VarId(pub(crate) usize);
 
 impl VarId {
@@ -23,12 +23,12 @@ pub struct Program {
     pub entry_point: MethodId
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Method {
     pub body: Vec<Statement>
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Statement {
     Assign(Assign),
     Expression(Expression),
@@ -36,13 +36,13 @@ pub enum Statement {
     VarDecl,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Assign {
     pub var_id: VarId,
     pub value: Expression
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Expression {
     FieldAccess(Box<FieldAccess>),
     Literal(Literal),
@@ -55,13 +55,13 @@ pub enum Expression {
     NewObject(labels::ClassDecl),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct FieldAccess {
     pub target: Expression,
     pub field_id: FieldId
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Literal {
     Int(i64),
     String(String),
@@ -69,13 +69,13 @@ pub enum Literal {
     Null
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Intrinsic {
     IntOp(BinaryOperator, Expression, Expression),
     PrintLine(Expression),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MethodCall {
     pub method_id: MethodId,
     pub arguments: Vec<Expression>

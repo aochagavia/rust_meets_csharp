@@ -46,8 +46,8 @@ impl<'a> Interpreter<'a> {
         }
 
         // Free stack space
+        self.stack.truncate(self.stack_ptr);
         self.stack_ptr = sp;
-        self.stack.truncate(sp);
 
         ret
     }
@@ -94,7 +94,6 @@ impl<'a> Interpreter<'a> {
             }
             MethodCall(ref mc) => {
                 // Obtain method based on method_id
-                // FIXME: do something better than cloning
                 let method = &self.program.methods[mc.method_id.0].clone();
                 let args = mc.arguments.iter().map(|expr| self.run_expression(expr)).collect();
 
@@ -133,7 +132,7 @@ impl<'a> Interpreter<'a> {
                 let e2 = self.run_expression(e2);
                 let (e1, e2) = match (e1, e2) {
                     (rt::Value::Int(e1), rt::Value::Int(e2)) => (e1, e2),
-                    _ => unreachable!()
+                    (e1, e2) => panic!("[This code should be unreachable] Attempt to add values of incompatible types: {:?} and {:?}", e1, e2)
                 };
                 let res = match *op {
                     Add => e1 + e2,

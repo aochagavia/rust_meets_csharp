@@ -10,7 +10,7 @@ use frontend::sample_programs;
 use lowering::LoweringContext;
 
 fn main() {
-    let hw = sample_programs::hello_world();
+    let hw = sample_programs::variables();
     println!("=== Hello world:");
     println!("{}", hw);
     //println!("=== Compiling");

@@ -4,7 +4,7 @@ fn program_class() -> TopItem {
     let main_method = ClassItem::MethodDecl(MethodDecl {
         label: fresh_label(),
         name: "Main".to_string(),
-        params: vec![VarDecl { label: fresh_label(), var_name: "args".to_string(), ty: Type::Array(Box::new(Type::Custom("String".to_string()))), expr: None }],
+        params: Vec::new(),
         body: vec![
             Statement::Expression(Expression::MethodCall(MethodCall {
                 label: fresh_label(),
