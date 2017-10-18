@@ -83,6 +83,11 @@ impl<'a> Visitor<'a> for PreprocessVisitor<'a> {
     }
 
     fn visit_assign(&mut self, assign: &'a Assign) {
+        // Name resolution
+        let name: &str = &assign.var_name;
+        let decl = self.current_vars[name];
+        self.var_map.insert(assign.label, decl);
+
         visitor::walk_assign(self, assign)
     }
 

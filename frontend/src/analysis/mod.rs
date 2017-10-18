@@ -13,6 +13,7 @@ pub struct TypeId(usize);
 pub enum Type {
     Int,
     String,
+    Console,
     Array(TypeId),
     Void,
     Class(self::labels::ClassDecl)

@@ -47,9 +47,6 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
         self.methods.insert(ast::fresh_label().assert_as_method_decl(), method_id);
         methods.push(self.lower_console_write_line());
 
-        // Note, in the future we could also generate code for prelude methods
-        // i.e. int.Max
-
         // Assign an id to all methods and fields
         for cd in self.ast.classes() {
             let mut field_names = Vec::new();
@@ -187,11 +184,27 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
                 })
             }
             ast::Expression::MethodCall(ref mc) => {
-                // FIXME: what if an intrinsic method is called? Console.WriteLine
-                let label = self.query_engine.query_method_decl(mc.label.assert_as_method_use());
-                let is_static = self.query_engine.query_is_static(label);
-                let this = if is_static { None } else { Some(self.lower_expression(&mc.target, parent_method)) };
-                self.lower_method_call(label, this, &mc.args, parent_method)
+                let (method_id, is_static) = if mc.is_console_write_line() {
+                    // Handle Console.WriteLine
+                    (MethodId(0), true)
+                } else {
+                    let label = self.query_engine.query_method_decl(mc.label.assert_as_method_use());
+                    let is_static = self.query_engine.query_is_static(label);
+                    let method_id = self.methods[&label];
+                    (method_id, is_static)
+                };
+
+                let mut arguments = Vec::new();
+                if !is_static {
+                    // Push this (method is not static)
+                    arguments.push(self.lower_expression(&mc.target, parent_method));
+                }
+
+                for arg in &mc.args {
+                    arguments.push(self.lower_expression(arg, parent_method));
+                }
+
+                ir::Expression::MethodCall(ir::MethodCall { method_id, arguments })
             }
             ast::Expression::New(ref n) => {
                 let class_label = self.query_engine.query_class_decl(&n.class_name);
@@ -201,7 +214,7 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
                 let var_label = self.query_engine.query_var_decl(i.label);
                 ir::Expression::VarRead(self.var_tracker.get_var_id(var_label))
             }
-            ast::Expression::This(ref t) => {
+            ast::Expression::This(_) => {
                 if parent_method.is_static {
                     panic!("`this` keyword used inside static method");
                 }
@@ -218,19 +231,5 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
         let value = self.lower_expression(expr, parent_method);
         let var_id = self.var_tracker.get_var_id(decl_label);
         ir::Statement::Assign(ir::Assign { var_id, value })
-    }
-
-    fn lower_method_call(&mut self, method_label: labels::MethodDecl, this: Option<ir::Expression>, args: &[ast::Expression], parent_method: &ast::MethodDecl) -> ir::Expression {
-        // Note: we need to pass the target expression as a first argument to the function
-        let mut arguments: Vec<_> = this.into_iter().collect();
-
-        for arg in args {
-            arguments.push(self.lower_expression(arg, parent_method));
-        }
-
-        ir::Expression::MethodCall(ir::MethodCall {
-            method_id: self.methods[&method_label],
-            arguments
-        })
     }
 }

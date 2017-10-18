@@ -1,29 +1,5 @@
 use ast::*;
 
-fn console_class() -> TopItem {
-    // Provide two methods
-    fn create_method(name: &str) -> ClassItem {
-        ClassItem::MethodDecl(MethodDecl {
-            label: fresh_label(),
-            name: name.to_string(),
-            params: vec![VarDecl { label: fresh_label(), var_name: "arg".to_string(), ty: Type::Custom("String".to_string()), expr: None }],
-            body: Vec::new(),
-            is_static: true,
-            return_ty: Type::Void
-        })
-    }
-
-    TopItem::ClassDecl(ClassDecl {
-        label: fresh_label(),
-        name: "Console".to_string(),
-        items: vec![
-            create_method("Write"),
-            create_method("WriteLine"),
-            ClassItem::FieldDecl(FieldDecl { label: fresh_label(), name: "MyField".to_string(), ty: Type::Custom("int".to_string()), assignment: None })
-        ]
-    })
-}
-
 fn program_class() -> TopItem {
     let main_method = ClassItem::MethodDecl(MethodDecl {
         label: fresh_label(),
@@ -51,7 +27,6 @@ fn program_class() -> TopItem {
 pub fn hello_world() -> Program {
     Program {
         items: vec![
-            console_class(),
             program_class()
         ]
     }

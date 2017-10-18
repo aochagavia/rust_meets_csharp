@@ -47,6 +47,10 @@ impl TypeMap {
         TypeId(2)
     }
 
+    pub fn console_ty(&self) -> TypeId {
+        TypeId(3)
+    }
+
     pub fn unify(&self, ty1: TypeId, ty2: TypeId) -> bool {
         self.any_ty() == ty1 // One of both types are null
         || self.any_ty() == ty2
@@ -54,8 +58,15 @@ impl TypeMap {
     }
 
     pub fn get_from_class_name(&mut self, name: &str, decls: &HashMap<&str, &ast::ClassDecl>) -> TypeId {
-        let decl = decls.get(name).expect("Class decl not found for type").label.assert_as_class_decl();
-        self.get_id(Type::Class(decl))
+        match decls.get(name) {
+            Some(ref class) => {
+                let decl = class.label.assert_as_class_decl();
+                self.get_id(Type::Class(decl))
+            }
+            None => {
+                panic!("Class decl not found for `{}`", name);
+            }
+        }
     }
 
     pub fn get_from_ast_ty(&mut self, ast_ty: &ast::Type, decls: &HashMap<&str, &ast::ClassDecl>) -> TypeId {
@@ -72,8 +83,11 @@ impl TypeMap {
                     "int" => {
                         self.int_ty()
                     }
-                    "string" => {
+                    "string" | "String" => {
                         self.string_ty()
+                    }
+                    "Console" => {
+                        self.console_ty()
                     }
                     class_name => {
                         // Not a builtin type. We need to find the decl for this class. We assume it exists
@@ -93,13 +107,16 @@ impl Default for TypeMap {
         let types = vec![
             Type::Int,
             Type::String,
-            Type::Void
+            Type::Void,
+            Type::Console
         ];
 
         let mut ids = HashMap::new();
-        for (id, ty) in types.iter().enumerate() {
-            *ids.get_mut(ty).unwrap() = id;
+        for (id, &ty) in types.iter().enumerate() {
+            ids.insert(ty, id);
         }
+
+        ids.insert(Type::Console, 3);
 
         TypeMap { types, ids }
     }

@@ -153,7 +153,7 @@ pub fn walk_field_access<'a, V: Visitor<'a>>(visitor: &mut V, field_access: &'a 
     visitor.visit_expression(&field_access.target);
 }
 
-pub fn walk_literal<'a, V: Visitor<'a>>(visitor: &mut V, literal: &'a Literal) { }
+pub fn walk_literal<'a, V: Visitor<'a>>(_visitor: &mut V, _literal: &'a Literal) { }
 
 pub fn walk_method_call<'a, V: Visitor<'a>>(visitor: &mut V, method_call: &'a MethodCall) {
     visitor.visit_expression(&method_call.target);
@@ -162,8 +162,8 @@ pub fn walk_method_call<'a, V: Visitor<'a>>(visitor: &mut V, method_call: &'a Me
     }
 }
 
-pub fn walk_new<'a, V: Visitor<'a>>(visitor: &mut V, new: &'a New) { }
+pub fn walk_new<'a, V: Visitor<'a>>(_visitor: &mut V, _new: &'a New) { }
 
-pub fn walk_identifier<'a, V: Visitor<'a>>(visitor: &mut V, identifier: &'a Identifier) { }
+pub fn walk_identifier<'a, V: Visitor<'a>>(_visitor: &mut V, _identifier: &'a Identifier) { }
 
-pub fn walk_this<'a, V: Visitor<'a>>(visitor: &mut V) { }
+pub fn walk_this<'a, V: Visitor<'a>>(_visitor: &mut V) { }

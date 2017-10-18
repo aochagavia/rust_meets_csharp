@@ -24,13 +24,11 @@ impl<'a> QueryEngine<'a> {
         QueryEngine {
             types: TypeMap::default(),
             nodes: ast_data.nodes,
+            var_map: ast_data.var_map,
+            this_map: ast_data.this_map,
             classes: HashMap::new(),
             classes_by_name: ast_data.classes_by_name,
             entry_point: ast_data.entry_point,
-            // Todo
-            var_map: HashMap::default(),
-            this_map: HashMap::default(),
-
         }
     }
 
@@ -60,6 +58,8 @@ impl<'a> QueryEngine<'a> {
     }
 
     pub fn query_method_decl(&mut self, method_use: labels::MethodUse) -> labels::MethodDecl {
+        // We assume no queries about Console.WriteLine will ever be made
+
         // Get the ClassDecl of the target
         let target_label = self.nodes[&method_use.as_label()].downcast::<MethodCall>().target.label();
         let is_static;
@@ -146,6 +146,11 @@ impl<'a> QueryEngine<'a> {
                 }
             }
             Node::MethodCall(mc) => {
+                // Built in Console.WriteLine
+                if mc.is_console_write_line() {
+                    return Some(self.types.void_ty());
+                }
+
                 // Get class decl of target
                 let target_ty = self.query_expr_type(mc.target.label());
                 let class_decl = match target_ty {

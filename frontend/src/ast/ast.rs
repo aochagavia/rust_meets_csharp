@@ -231,6 +231,16 @@ pub struct MethodCall {
     pub args: Vec<Expression>
 }
 
+impl MethodCall {
+    pub fn is_console_write_line(&self) -> bool {
+        if let &Expression::Identifier(ref class_name) = &*self.target {
+            class_name.name == "Console" && self.method_name == "WriteLine"
+        } else {
+            false
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct New {
     pub label: Label,
