@@ -18,6 +18,7 @@ impl VarId {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Program {
     pub methods: Vec<Method>,
     pub entry_point: MethodId
@@ -34,6 +35,9 @@ pub enum Statement {
     Expression(Expression),
     Return(Option<Expression>),
     VarDecl,
+    Branch(Expression, usize),
+    Jump(usize),
+    Nop
 }
 
 #[derive(Clone, Debug)]

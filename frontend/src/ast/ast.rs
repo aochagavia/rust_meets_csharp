@@ -147,7 +147,7 @@ pub struct MethodDecl {
     pub return_ty: Type
 }
 
-/// StatementsFAssign
+/// Statements
 #[derive(Clone, Debug)]
 pub enum Statement {
     /// Assignment
@@ -158,6 +158,8 @@ pub enum Statement {
     Return(Return),
     /// Variable declaration
     VarDecl(VarDecl),
+    /// If then else
+    IfThenElse(IfThenElse),
 }
 
 #[derive(Clone, Debug)]
@@ -179,6 +181,14 @@ pub struct VarDecl {
     pub var_name: String,
     pub ty: Type,
     pub expr: Option<Expression>
+}
+
+#[derive(Clone, Debug)]
+pub struct IfThenElse {
+    pub label: Label,
+    pub condition: Expression,
+    pub then: Vec<Statement>,
+    pub else_: Vec<Statement>
 }
 
 /// Expressions
@@ -319,7 +329,8 @@ pub enum BinaryOperator {
     Add,
     Sub,
     Mul,
-    Div
+    Div,
+    Eq
 }
 
 impl fmt::Display for BinaryOperator {
@@ -328,7 +339,8 @@ impl fmt::Display for BinaryOperator {
             BinaryOperator::Add => "+".fmt(f),
             BinaryOperator::Sub => "-".fmt(f),
             BinaryOperator::Mul => "*".fmt(f),
-            BinaryOperator::Div => "/".fmt(f)
+            BinaryOperator::Div => "/".fmt(f),
+            BinaryOperator::Eq => "==".fmt(f)
         }
     }
 }

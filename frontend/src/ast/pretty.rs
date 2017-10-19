@@ -33,6 +33,16 @@ impl PrettyPrinter {
         Ok(())
     }
 
+    fn block(&mut self, f: &mut fmt::Formatter, block: &[Statement]) -> fmt::Result {
+        self.bracket_open(f)?;
+
+        for statement in block {
+            self.print_statement(f, &statement)?;
+        }
+
+        self.bracket_close(f)
+    }
+
     fn comma_separated<T, F>(f: &mut fmt::Formatter, items: &[T], format: F) -> fmt::Result
     where
         F: Fn(&mut fmt::Formatter, &T) -> fmt::Result
@@ -63,7 +73,7 @@ impl PrettyPrinter {
 
     pub fn print_top_item(&mut self, f: &mut fmt::Formatter, i: &TopItem) -> fmt::Result {
         let &TopItem::ClassDecl(ref cd) = i;
-        write!(f, "class {}", cd.name)?;
+        write!(f, "class {} ", cd.name)?;
 
         self.bracket_open(f)?;
 
@@ -89,13 +99,7 @@ impl PrettyPrinter {
                         write!(f, "{} {}", param.ty, param.var_name)
                     })?;
                     write!(f, ") ")?;
-                    self.bracket_open(f)?;
-
-                    for statement in &md.body {
-                        self.print_statement(f, &statement)?;
-                    }
-
-                    self.bracket_close(f)?;
+                    self.block(f, &md.body)?;
                 }
             }
         }
@@ -109,14 +113,19 @@ impl PrettyPrinter {
             Statement::Assign(ref assign) => {
                 write!(f, "{} = ", assign.var_name)?;
                 self.print_expression(f, &assign.expr)?;
+                writeln!(f, ";")
             }
-            Statement::Expression(ref expr) => self.print_expression(f, expr)?,
+            Statement::Expression(ref expr) => {
+                self.print_expression(f, expr)?;
+                writeln!(f, ";")
+            }
             Statement::Return(ref ret) => {
                 write!(f, "return")?;
                 if let Some(ref expr) = ret.expr {
                     write!(f, " ")?;
                     self.print_expression(f, expr)?;
                 }
+                writeln!(f, ";")
             }
             Statement::VarDecl(ref decl) => {
                 write!(f, "{} {}", decl.ty, decl.var_name)?;
@@ -124,10 +133,19 @@ impl PrettyPrinter {
                     write!(f, " = ")?;
                     self.print_expression(f, expr)?;
                 }
+                writeln!(f, ";")
+            }
+            Statement::IfThenElse(ref ite) => {
+                write!(f, "if (")?;
+                self.print_expression(f, &ite.condition)?;
+                write!(f, ") ")?;
+                self.block(f, &ite.then)?;
+                self.indent(f)?;
+                write!(f, "else ")?;
+                self.block(f, &ite.else_)
             }
         }
 
-        writeln!(f, ";")
     }
 
     pub fn print_expression(&self, f: &mut fmt::Formatter, e: &Expression) -> fmt::Result {

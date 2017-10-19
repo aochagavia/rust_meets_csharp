@@ -91,6 +91,10 @@ impl<'a> Visitor<'a> for PreprocessVisitor<'a> {
         visitor::walk_assign(self, assign)
     }
 
+    fn visit_if_then_else(&mut self, ite: &'a IfThenElse) {
+        visitor::walk_if_then_else(self, ite)
+    }
+
     fn visit_expression(&mut self, expr: &'a Expression) {
         visitor::walk_expression(self, expr)
     }

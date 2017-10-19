@@ -111,11 +111,14 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
         }
 
         let mut body = Vec::new();
-        for stmt in &m.body {
-            self.lower_statement(stmt, &mut body, &m);
-        }
-
+        self.lower_block(&m.body, &mut body, &m);
         ir::Method { body }
+    }
+
+    fn lower_block(&mut self, block: &[ast::Statement], body: &mut Vec<ir::Statement>, parent_method: &ast::MethodDecl) {
+        for stmt in block {
+            self.lower_statement(stmt, body, parent_method);
+        }
     }
 
     fn lower_statement(&mut self, s: &ast::Statement, body: &mut Vec<ir::Statement>, parent_method: &ast::MethodDecl) {
@@ -150,6 +153,35 @@ impl<'engine, 'ast: 'engine> LoweringContext<'engine, 'ast> {
                 if let Some(ref expr) = var_decl.expr {
                     body.push(self.lower_assignment(var_decl.label, expr, parent_method));
                 }
+            }
+            ast::Statement::IfThenElse(ref ite) => {
+                // Ensure the condition is well types
+                let ty = self.query_engine.query_expr_type(ite.condition.label()).expect("If condition has no type!");
+                let bool_ty = self.query_engine.types().bool_ty();
+                self.query_engine.types_mut().unify(ty, bool_ty);
+
+                // Add a nop to be replaced later
+                let branch_i = body.len();
+                body.push(ir::Statement::Nop);
+
+                // Generate code for `else`
+                self.lower_block(&ite.else_, body, parent_method);
+                let then_addr = body.len() + 1; // We need to skip the nop below
+
+                // Add a second nop to be replaced later
+                let jump_i = body.len();
+                body.push(ir::Statement::Nop);
+
+                // Generate code for `then`
+                self.lower_block(&ite.then, body, parent_method);
+                let end_addr = body.len();
+
+                // Put a branch before the `else` block
+                let cond = self.lower_expression(&ite.condition, parent_method);
+                body[branch_i] = ir::Statement::Branch(cond, then_addr);
+
+                // Put a jump after the `then` block
+                body[jump_i] = ir::Statement::Jump(end_addr);
             }
         }
     }

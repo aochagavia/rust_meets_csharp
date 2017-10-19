@@ -25,9 +25,11 @@ fn main() {
 
     //println!("Query entry point for the program: {}", query_engine.entry_point().name);
 
+    //println!("=== After lowering");
     let output = LoweringContext::new(&hw, &mut query_engine).lower_program();
-    println!("=== Running");
+    //println!("{:?}", output.program);
 
+    println!("=== Running");
     interpreter::run(&output.program, output.classes);
 }
 

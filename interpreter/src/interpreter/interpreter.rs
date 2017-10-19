@@ -7,6 +7,7 @@ use super::runtime as rt;
 
 enum NextAction {
     Continue,
+    Jump(usize),
     Return(Option<rt::Value>)
 }
 
@@ -38,10 +39,19 @@ impl<'a> Interpreter<'a> {
 
         // Run the statements
         let mut ret = None;
-        for s in &m.body {
-            if let NextAction::Return(val) = self.run_statement(s) {
-                ret = val;
-                break;
+        let mut instr = 0;
+        while instr < m.body.len() {
+            match self.run_statement(&m.body[instr]) {
+                NextAction::Continue => {
+                    instr += 1;
+                }
+                NextAction::Jump(new_instr) => {
+                    instr = new_instr;
+                }
+                NextAction::Return(val) => {
+                    ret = val;
+                    break;
+                }
             }
         }
 
@@ -69,6 +79,19 @@ impl<'a> Interpreter<'a> {
             }
             VarDecl => {
                 self.stack.push(rt::Value::Int(::std::i64::MAX));
+                NextAction::Continue
+            }
+            Branch(ref expr, i) => {
+                match self.run_expression(expr) {
+                    rt::Value::Bool(true) => NextAction::Jump(i),
+                    rt::Value::Bool(false) => NextAction::Continue,
+                    v => panic!("[Unreachable code] Condition to branch instruction is not a boolean: {:?}", v)
+                }
+            }
+            Jump(i) => {
+                NextAction::Jump(i)
+            }
+            Nop => {
                 NextAction::Continue
             }
         }
@@ -126,6 +149,7 @@ impl<'a> Interpreter<'a> {
 
     fn run_intrinsic(&mut self, i: &ir::Intrinsic) -> rt::Value {
         use self::ir::Intrinsic::*;
+        use self::rt::Value::*;
         use frontend::ast::BinaryOperator::*;
         match *i {
             IntOp(ref op, ref e1, ref e2) => {
@@ -135,13 +159,15 @@ impl<'a> Interpreter<'a> {
                     (rt::Value::Int(e1), rt::Value::Int(e2)) => (e1, e2),
                     (e1, e2) => panic!("[This code should be unreachable] Attempt to add values of incompatible types: {:?} and {:?}", e1, e2)
                 };
-                let res = match *op {
-                    Add => e1 + e2,
-                    Sub => e1 - e2,
-                    Mul => e1 * e2,
-                    Div => e1 / e2,
-                };
-                rt::Value::Int(res)
+                match *op {
+                    // Integer -> Integer
+                    Add => Int(e1 + e2),
+                    Sub => Int(e1 - e2),
+                    Mul => Int(e1 * e2),
+                    Div => Int(e1 / e2),
+                    // Integer -> Bool
+                    Eq => Bool(e1 == e2)
+                }
             }
             PrintLine(ref expr) => {
                 let val = self.run_expression(expr);

@@ -42,6 +42,10 @@ pub trait Visitor<'a>: Sized {
         walk_var_decl(self, var_decl)
     }
 
+    fn visit_if_then_else(&mut self, ite: &'a IfThenElse) {
+        walk_if_then_else(self, ite)
+    }
+
     fn visit_binary_op(&mut self, binary_op: &'a BinaryOp) {
         walk_binary_op(self, binary_op)
     }
@@ -112,7 +116,8 @@ pub fn walk_statement<'a, V: Visitor<'a>>(visitor: &mut V, statement: &'a Statem
         Statement::Assign(ref a) => visitor.visit_assign(a),
         Statement::Expression(ref e) => visitor.visit_expression(e),
         Statement::Return(ref r) => visitor.visit_return(r),
-        Statement::VarDecl(ref vd) => visitor.visit_var_decl(vd)
+        Statement::VarDecl(ref vd) => visitor.visit_var_decl(vd),
+        Statement::IfThenElse(ref ite) => visitor.visit_if_then_else(ite)
     }
 }
 
@@ -129,6 +134,16 @@ pub fn walk_return<'a, V: Visitor<'a>>(visitor: &mut V, ret: &'a Return) {
 pub fn walk_var_decl<'a, V: Visitor<'a>>(visitor: &mut V, var_decl: &'a VarDecl) {
     if let Some(ref expr) = var_decl.expr {
         visitor.visit_expression(expr);
+    }
+}
+
+pub fn walk_if_then_else<'a, V: Visitor<'a>>(visitor: &mut V, ite: &'a IfThenElse) {
+    visitor.visit_expression(&ite.condition);
+    for stmt in &ite.then {
+        visitor.visit_statement(stmt);
+    }
+    for stmt in &ite.else_ {
+        visitor.visit_statement(stmt);
     }
 }
 
