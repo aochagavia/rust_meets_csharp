@@ -1,4 +1,13 @@
 [[package]]
+name = "benchmarks"
+version = "0.1.0"
+dependencies = [
+ "frontend 0.1.0",
+ "time 0.1.38 (registry+https://github.com/rust-lang/crates.io-index)",
+ "type_checker 0.1.0",
+]
+
+[[package]]
 name = "frontend"
 version = "0.1.0"
 
@@ -7,7 +16,6 @@ name = "interpreter"
 version = "0.1.0"
 dependencies = [
  "frontend 0.1.0",
- "time 0.1.38 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

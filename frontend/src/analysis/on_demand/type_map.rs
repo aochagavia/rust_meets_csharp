@@ -1,7 +1,32 @@
 use std::collections::HashMap;
 use std::usize;
-use analysis::{Type, TypeId};
+
+use analysis::labels;
 use ast;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub struct TypeId(usize);
+
+/// Represents the type of an expression
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub enum Type {
+    Bool,
+    Int,
+    String,
+    Console,
+    Array(TypeId),
+    Void,
+    Class(labels::ClassDecl)
+}
+
+impl Type {
+    pub fn class_decl(&self) -> labels::ClassDecl {
+        match self {
+            &Type::Class(cd) => cd,
+            _ => panic!("Type was not a Class type")
+        }
+    }
+}
 
 pub struct TypeMap {
     types: Vec<Type>,

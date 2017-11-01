@@ -9,7 +9,6 @@ pub struct QueryEngine<'a> {
     var_map: HashMap<Label, &'a VarDecl>,
     this_map: HashMap<Label, &'a ClassDecl>,
     types: TypeMap,
-    classes: HashMap<labels::ClassDecl, &'a ClassDecl>,
     classes_by_name: HashMap<&'a str, &'a ClassDecl>,
     entry_point: &'a MethodDecl
 }
@@ -19,17 +18,11 @@ impl<'a> QueryEngine<'a> {
     pub fn new(program: &'a Program) -> QueryEngine<'a> {
         let ast_data = AstPreprocessor::preprocess(program);
 
-        let mut classes = HashMap::new();
-        for (_, &decl) in &ast_data.classes_by_name {
-            classes.insert(decl.label.assert_as_class_decl(), decl);
-        }
-
         QueryEngine {
             types: TypeMap::default(),
             nodes: ast_data.nodes,
             var_map: ast_data.var_map,
             this_map: ast_data.this_map,
-            classes,
             classes_by_name: ast_data.classes_by_name,
             entry_point: ast_data.entry_point,
         }
@@ -37,10 +30,6 @@ impl<'a> QueryEngine<'a> {
 
     pub fn entry_point(&self) -> &MethodDecl {
         &self.entry_point
-    }
-
-    pub fn classes(&self) -> &HashMap<labels::ClassDecl, &'a ClassDecl> {
-        &self.classes
     }
 
     pub fn types(&self) -> &TypeMap {
@@ -57,7 +46,7 @@ impl<'a> QueryEngine<'a> {
         // Note: a field target should always be an expression and have a type
         let target_ty = self.query_expr_type(target_label).unwrap();
         let decl_label = self.types.get(target_ty).class_decl();
-        let target_decl = self.classes[&decl_label];
+        let target_decl: &ClassDecl = self.nodes[&decl_label.as_label()].downcast();
 
         // Look up the field
         target_decl.find_field(&self.nodes[&var_use.as_label()].downcast::<FieldAccess>().field_name)
@@ -164,7 +153,10 @@ impl<'a> QueryEngine<'a> {
                     Some(ty) => {
                         // Non-static method
                         let decl_label = self.types.get(ty).class_decl();
-                        self.classes[&decl_label]
+
+                        // Stupid workaround the borrow checker
+                        let class_name: &str = &self.nodes[&decl_label.as_label()].downcast::<ClassDecl>().name;
+                        self.classes_by_name[class_name]
                     }
                     None => {
                         // Static method

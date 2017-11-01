@@ -22,7 +22,7 @@ fn empty_methods() -> Vec<ClassItem> {
 }
 
 fn classes() -> Vec<TopItem> {
-    let amount = 1000;
+    let amount = 100_000;
     let mut classes = Vec::with_capacity(amount);
     for class_count in 0..amount {
         let class_name = format!("C{}", class_count);

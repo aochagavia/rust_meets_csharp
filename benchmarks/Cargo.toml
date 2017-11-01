@@ -1,7 +1,13 @@
 [package]
-name = "interpreter"
+name = "benchmarks"
 version = "0.1.0"
 authors = ["Adolfo Ochagavía <aochagavia92@gmail.com>"]
 
 [dependencies.frontend]
 path = "../frontend"
+
+[dependencies.type_checker]
+path = "../type_checker"
+
+[dependencies]
+time = "*"
