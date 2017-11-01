@@ -17,16 +17,19 @@ pub struct QueryEngine<'a> {
 #[allow(unused_variables)]
 impl<'a> QueryEngine<'a> {
     pub fn new(program: &'a Program) -> QueryEngine<'a> {
-        // FIXME: manually add type information for Console.WriteLine
-        // We need a fake class called Console with a fake method called WriteLine
         let ast_data = AstPreprocessor::preprocess(program);
+
+        let mut classes = HashMap::new();
+        for (_, &decl) in &ast_data.classes_by_name {
+            classes.insert(decl.label.assert_as_class_decl(), decl);
+        }
 
         QueryEngine {
             types: TypeMap::default(),
             nodes: ast_data.nodes,
             var_map: ast_data.var_map,
             this_map: ast_data.this_map,
-            classes: HashMap::new(),
+            classes,
             classes_by_name: ast_data.classes_by_name,
             entry_point: ast_data.entry_point,
         }
@@ -34,6 +37,10 @@ impl<'a> QueryEngine<'a> {
 
     pub fn entry_point(&self) -> &MethodDecl {
         &self.entry_point
+    }
+
+    pub fn classes(&self) -> &HashMap<labels::ClassDecl, &'a ClassDecl> {
+        &self.classes
     }
 
     pub fn types(&self) -> &TypeMap {

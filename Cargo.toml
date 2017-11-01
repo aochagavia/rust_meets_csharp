@@ -1,2 +1,2 @@
 [workspace]
-members = ["frontend", "interpreter"]
+members = ["frontend", "interpreter", "type_checker"]
